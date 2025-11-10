@@ -3,6 +3,7 @@ package com.quantipixels.ikokuko
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,8 +45,39 @@ fun Form(
  */
 @Stable
 class FormState(shouldShowErrors: Boolean = false) {
-
+    /**
+     * Holds the current values for all registered [Field]s in the form.
+     *
+     * Each entry maps a [Field] to its latest assigned value.
+     * Although fields are used as map keys, their equality is determined
+     * by their [Field.name] — meaning multiple field instances that share
+     * the same name will point to the same stored value.
+     *
+     * Warning: If two fields with the same name are defined with different types,
+     * a type cast error will occur when retrieving the value through [FormScope.value].
+     *
+     * @throws ClassCastException if multiple fields share the same [Field.name] but declare
+     * different types, causing a type mismatch on value retrieval via [FormScope.value].
+     */
     internal val values = mutableStateMapOf<Field<*>, Any>()
+
+    /**
+     * Tracks all [Field]s that have been modified since form initialization or reset.
+     *
+     * A field is added to this list the first time its value changes from its default.
+     * This allows the form to distinguish between fields the user has interacted with
+     * ("dirty" fields) and those that are still untouched.
+     *
+     * Validation or UI layers can use this to show errors or feedback only after
+     * a field has been modified, improving UX by preventing premature validation.
+     *
+     * The list is cleared whenever [FormState.reset] is called.
+     *
+     * @see Field
+     * @see FormScope.value
+     * @see FormState.reset
+     */
+    internal val dirtyFields = mutableStateListOf<Field<*>>()
 
     /**
      * Validation errors keyed by field name.
@@ -60,20 +92,34 @@ class FormState(shouldShowErrors: Boolean = false) {
      */
     var shouldShowErrors by mutableStateOf(shouldShowErrors)
 
-    /** True if the entire form is valid or errors are hidden. */
+    /**
+     * Indicates whether any [Field] in the form has been modified
+     * since initialization or the last [reset].
+     */
+    val isDirty: Boolean
+        get() = dirtyFields.isNotEmpty()
+
+    /**
+     * Indicates whether the form is currently in a valid (non-error) state.
+     *
+     * Validation errors are ignored while [shouldShowErrors] is `false`,
+     * so this property represents perceived validity according to the
+     * current error visibility policy rather than strict validation state.
+     */
     val isValid: Boolean
-        get() = !shouldShowErrors || errors.isEmpty()
+        get() = !shouldShowErrors || !isDirty || errors.isEmpty()
 
     /**
      * Clears all field values and hides validation errors.
      *
      * After reset, all [ValidationEffect] composables in the form will automatically
-     * reinitialize their associated [Field]s to their provided default values on the next
-     * recomposition.
+     * reinitialize their associated [Field]s to their provided default values and mark them
+     * as pristine on the next recomposition.
      *
-     * This effectively restores the form to its initial state.
+     * This fully restores the form to its initial state.
      */
     fun reset() {
+        dirtyFields.clear()
         values.clear()
         shouldShowErrors = false
     }

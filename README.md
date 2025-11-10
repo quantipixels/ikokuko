@@ -35,7 +35,7 @@ dependencies {
 ---
 
 ### 2️⃣ Define fields
-You can define `[Field](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Field)` objects as top-level, local, or composable-scoped values — they’re lightweight and can be freely recreated.
+You can define `[Field](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Field.kt)` objects as top-level, local, or composable-scoped values — they’re lightweight and can be freely recreated.
 
 ```kotlin
 val EmailField = Field.Text("email")
@@ -59,7 +59,7 @@ val TermsField = Field.Boolean("terms")
 
 ---
 
-### 3️⃣ [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form)
+### 3️⃣ [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
 `[FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form)` manages all field values, validation errors, and visibility flags for a form.
 It’s the single source of truth for the form’s current state.
 
@@ -116,7 +116,7 @@ val EmailField = Field.Text("email")
 val PasswordField = Field.Text("password")
 
 @Composable
-fun SignUpForm() {
+fun SignInForm() {
     val formState = remember { FormState() }
 
     Form(state = formState, onSubmit = {
@@ -188,7 +188,7 @@ EmailField.error = null
 
 ### 6️⃣ Creating Reusable Form Components
 
-Ikokuko’s `[FormScope](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope)` lets you build reusable composable form components that automatically handle value binding, validation, and error display.
+Ikokuko’s `[FormScope](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt)` lets you build reusable composable form components that automatically handle value binding, validation, and error display.
 This makes it easy to define input fields once and reuse them across different forms.
 
 #### Example: `TextInput`
@@ -234,7 +234,7 @@ All form logic is encapsulated inside the FormScope, so the field automatically 
 
 ---
 
-### 7️⃣ Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator)
+### 7️⃣ Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
 
 #### Text
 | Validator | Description |

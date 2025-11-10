@@ -1,21 +1,25 @@
+@file:OptIn(ExperimentalWasmDsl::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.composeMultiplatform)
+    id("maven-publish")
+    id("signing")
 }
 
 kotlin {
 
-    // Target declarations - add or remove as needed below. These define
-    // which platforms this KMP module supports.
-    // See: https://kotlinlang.org/docs/multiplatform-discover-project.html#targets
     androidLibrary {
-        namespace = "com.quantipixels.ikokuko"
-        compileSdk = 36
-        minSdk = 24
+        namespace = "io.github.eosobande.ikokuko"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
 
-        withHostTestBuilder {
-        }
+        withHostTestBuilder {}
 
         withDeviceTestBuilder {
             sourceSetTreeName = "test"
@@ -24,58 +28,36 @@ kotlin {
         }
     }
 
-    // For iOS targets, this is also where you should
-    // configure native binary output. For more information, see:
-    // https://kotlinlang.org/docs/multiplatform-build-native-binaries.html#build-xcframeworks
-
-    // A step-by-step guide on how to include this library in an XCode
-    // project can be found here:
-    // https://developer.android.com/kotlin/multiplatform/migrate
-    val xcfName = "ikokukoKit"
-
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "ikokukoKit"
         }
     }
 
-    iosArm64 {
-        binaries.framework {
-            baseName = xcfName
-        }
+    jvm()
+
+    js(IR) {
+        browser()
+        nodejs()
+        binaries.library()
+    }
+    wasmJs {
+        browser()
+        nodejs()
+        binaries.library()
     }
 
-    iosSimulatorArm64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
-    // Source set declarations.
-    // Declaring a target automatically creates a source set with the same name. By default, the
-    // Kotlin Gradle Plugin creates additional source sets that depend on each other, since it is
-    // common to share sources between related targets.
-    // See: https://kotlinlang.org/docs/multiplatform-hierarchy.html
     sourceSets {
-        commonMain {
-            dependencies {
-                implementation(libs.kotlin.stdlib)
-                // Add KMP dependencies here
-            }
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
         }
-
-        commonTest {
-            dependencies {
-                implementation(libs.kotlin.test)
-            }
-        }
-
-        androidMain {
-            dependencies {
-                // Add Android-specific dependencies here. Note that this source set depends on
-                // commonMain by default and will correctly pull the Android artifacts of any KMP
-                // dependencies declared in commonMain.
-            }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
 
         getByName("androidDeviceTest") {
@@ -85,16 +67,31 @@ kotlin {
                 implementation(libs.androidx.testExt.junit)
             }
         }
+    }
 
-        iosMain {
-            dependencies {
-                // Add iOS-specific dependencies here. This a source set created by Kotlin Gradle
-                // Plugin (KGP) that each specific iOS target (e.g., iosX64) depends on as
-                // part of KMP’s default source set hierarchy. Note that this source set depends
-                // on common by default and will correctly pull the iOS artifacts of any
-                // KMP dependencies declared in commonMain.
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["kotlin"])
+
+                groupId = "com.quantipixels"
+                artifactId = "ikokuko"
+                version = "1.0.0"
+            }
+        }
+
+        repositories {
+            maven {
+                name = "CentralPortal"
+                url = uri("https://central.sonatype.com/api/v1/publisher/deploy")
+                credentials {
+                    username = project.findProperty("mavenCentralUsername") as String?
+                    password = project.findProperty("mavenCentralPassword") as String?
+                }
             }
         }
     }
-
 }

@@ -20,7 +20,7 @@
 
 ## Getting Started
 
-### 1.⃣ Add dependency
+### 1. Add dependency
 
 ```kotlin
 repositories {
@@ -34,7 +34,7 @@ dependencies {
 
 ---
 
-### 2.⃣ Define fields
+### 2. Define fields
 You can define `[Field](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Field.kt)` objects as top-level, local, or composable-scoped values — they’re lightweight and can be freely recreated.
 
 ```kotlin
@@ -59,7 +59,7 @@ val TermsField = Field.Boolean("terms")
 
 ---
 
-### 3.⃣ [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
+### 3. [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
 `[FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form)` manages all field values, validation errors, and visibility flags for a form.
 It’s the single source of truth for the form’s current state.
 
@@ -109,7 +109,7 @@ Form(onSubmit = {}) {
 
 ---
 
-### 4.⃣ Build a form
+### 4. Build a form
 
 ```kotlin
 val EmailField = Field.Text("email")
@@ -159,7 +159,7 @@ fun SignInForm() {
 
 ---
 
-### 5.⃣ Overriding Errors Manually
+### 5. Overriding Errors Manually
 
 Each `Field` exposes an `error` property that represents its current validation error message, and it can be set or cleared manually at any time.
 
@@ -186,7 +186,7 @@ EmailField.error = null
 
 ---
 
-### 6.⃣ Creating Reusable Form Components
+### 6. Creating Reusable Form Components
 
 Ikokuko’s `[FormScope](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt)` lets you build reusable composable form components that automatically handle value binding, validation, and error display.
 This makes it easy to define input fields once and reuse them across different forms.
@@ -234,7 +234,7 @@ All form logic is encapsulated inside the FormScope, so the field automatically 
 
 ---
 
-### 7.⃣ Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
+### 7. Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
 
 #### Text
 | Validator | Description |

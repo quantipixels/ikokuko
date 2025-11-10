@@ -107,24 +107,23 @@ fun FormScope.CheckBox(
 
 @Composable
 fun <T> FormScope.RadioGroup(
-    field: Field<List<T>>,
+    field: Field<String>,
     label: String,
     items: List<T>,
     modifier: Modifier = Modifier,
+    transform: (T) -> String = { it.toString() },
     itemLabel: @Composable (T) -> Unit = {
-        Text(
-            text = "$it",
-            modifier = Modifier.padding(end = 16.dp)
-        )
+        Text(text = "$it", modifier = Modifier.padding(end = 16.dp))
     },
-    initialValue: List<T> = emptyList(),
-    validators: List<Validator<List<T>>> = emptyList()
+    initialValue: String = "",
+    validators: List<Validator<String>> = emptyList()
 ) {
     ValidationEffect(field, initialValue, validators)
 
     val onItemClick: (T) -> Unit = { item ->
-        if (item !in field.value) {
-            field.value = listOf(item)
+        val stringValue = transform(item)
+        if (stringValue != field.value) {
+            field.value = stringValue
         }
     }
 
@@ -142,7 +141,7 @@ fun <T> FormScope.RadioGroup(
                         .clickable { onItemClick(item) }
                 ) {
                     RadioButton(
-                        selected = item in field.value,
+                        selected = transform(item) == field.value,
                         onClick = { onItemClick(item) },
                         colors = RadioButtonDefaults.colors(
                             unselectedColor = if (field.isValid) {

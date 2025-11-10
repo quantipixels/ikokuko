@@ -37,7 +37,7 @@ private val PhoneNumberField = Field.Text("phone_number")
 private val EmailField = Field.Text("email")
 private val PasswordField = Field.Text("password")
 private val ConfirmPasswordField = Field.Text("confirm_password")
-private val CapacityField = Field.List<Capacity>("capacity")
+private val CapacityField = Field.Text("capacity")
 private val ProjectsField = Field.List<Project>("projects")
 private val TermsField = Field.Boolean("terms")
 
@@ -67,7 +67,7 @@ fun SignUpForm(
                     EmailField.value,
                     PasswordField.value,
                     ConfirmPasswordField.value,
-                    CapacityField.value.first(),
+                    enumValueOf<Capacity>(CapacityField.value),
                     ProjectsField.value,
                     TermsField.value
                 )
@@ -118,7 +118,7 @@ fun SignUpForm(
                 field = CapacityField,
                 label = "In what capacity do you intend to use this library?",
                 items = Capacity.entries,
-                validators = listOf(ExactSelectionValidator("capacity is required", 1))
+                validators = listOf(RequiredValidator("capacity is required"))
             )
             CheckGroup(
                 field = ProjectsField,

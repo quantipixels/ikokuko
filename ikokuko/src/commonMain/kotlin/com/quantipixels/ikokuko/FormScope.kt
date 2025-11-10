@@ -103,8 +103,14 @@ fun <T : Any> FormScope.ValidationEffect(
     default: T,
     validators: List<Validator<T>>
 ) {
-    if (!field.isInitialized) field.value = default
-
+    if (!field.isInitialized) {
+        /**
+         * Initialize (or reinitialize after reset).
+         * Must set default before launching validation; if not initialized,
+         * reading field.value in LaunchedEffect would throw.
+         */
+        field.value = default
+    }
     LaunchedEffect(field.value, validators) {
         field.error = validators.firstOrNull { !it.validate(field.value) }?.errorMessage
     }

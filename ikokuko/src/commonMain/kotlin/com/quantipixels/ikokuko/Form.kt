@@ -64,7 +64,15 @@ class FormState(shouldShowErrors: Boolean = false) {
     val isValid: Boolean
         get() = !shouldShowErrors || errors.isEmpty()
 
-    /** Clears all field values and hides validation errors. */
+    /**
+     * Clears all field values and hides validation errors.
+     *
+     * After reset, all [ValidationEffect] composables in the form will automatically
+     * reinitialize their associated [Field]s to their provided default values on the next
+     * recomposition.
+     *
+     * This effectively restores the form to its initial state.
+     */
     fun reset() {
         values.clear()
         shouldShowErrors = false

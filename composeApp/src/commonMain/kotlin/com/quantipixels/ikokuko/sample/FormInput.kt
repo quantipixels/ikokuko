@@ -31,7 +31,7 @@ import com.quantipixels.ikokuko.Validator
 @Composable
 fun FormScope.TextInput(
     field: Field<String>,
-    modifier: Modifier = Modifier.Companion,
+    modifier: Modifier = Modifier,
     initialValue: String = "",
     label: String = "",
     placeholder: String = "",

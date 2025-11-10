@@ -155,9 +155,9 @@ class EqualsValidator<T>(
 /** Validates that a value is not equal to a given [unwanted] value. */
 class NotEqualsValidator<T>(
     override val errorMessage: String,
-    private val unwanted: T
+    private val unwanted: () -> T
 ) : Validator<T> {
-    override fun validate(value: T) = value != unwanted
+    override fun validate(value: T) = value != unwanted()
 }
 
 /** Validates that a selection is not empty. */

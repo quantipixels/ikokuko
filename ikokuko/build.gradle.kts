@@ -38,19 +38,6 @@ kotlin {
         }
     }
 
-    jvm()
-
-    js(IR) {
-        browser()
-        nodejs()
-        binaries.library()
-    }
-    wasmJs {
-        browser()
-        nodejs()
-        binaries.library()
-    }
-
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)

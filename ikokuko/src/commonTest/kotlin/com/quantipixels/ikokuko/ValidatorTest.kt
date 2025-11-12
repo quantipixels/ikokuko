@@ -5,7 +5,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ValidatorTests {
+class ValidatorTest {
 
     @Test
     fun requiredValidator_passes_on_non_blank() {

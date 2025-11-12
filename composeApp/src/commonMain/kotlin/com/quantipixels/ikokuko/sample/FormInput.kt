@@ -24,8 +24,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.quantipixels.ikokuko.Field
+import com.quantipixels.ikokuko.FormField
 import com.quantipixels.ikokuko.FormScope
-import com.quantipixels.ikokuko.ValidationEffect
 import com.quantipixels.ikokuko.Validator
 
 @Composable
@@ -37,25 +37,25 @@ fun FormScope.TextInput(
     placeholder: String = "",
     validators: List<Validator<String>> = emptyList()
 ) {
-    ValidationEffect(field, initialValue, validators)
-
-    Column(modifier = modifier) {
-        OutlinedTextField(
-            value = field.value,
-            isError = !field.isValid,
-            label = { Text(label) },
-            placeholder = {
-                Text(
-                    placeholder,
-                    color = MaterialTheme.colorScheme.secondary.copy(alpha = .7f)
-                )
-            },
-            supportingText = field.error?.let { { Text(it) } },
-            onValueChange = { field.value = it },
-            singleLine = true,
-            modifier = Modifier.Companion.fillMaxWidth()
-        )
-        Spacer(Modifier.Companion.height(12.dp))
+    FormField(field, initialValue, validators) {
+        Column(modifier = modifier) {
+            OutlinedTextField(
+                value = field.value,
+                isError = !field.isValid,
+                label = { Text(label) },
+                placeholder = {
+                    Text(
+                        placeholder,
+                        color = MaterialTheme.colorScheme.secondary.copy(alpha = .7f)
+                    )
+                },
+                supportingText = field.error?.let { { Text(it) } },
+                onValueChange = { field.value = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.Companion.height(12.dp))
+        }
     }
 }
 
@@ -68,40 +68,40 @@ fun FormScope.CheckBox(
     modifier: Modifier = Modifier,
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically
 ) {
-    ValidationEffect(field, checked, validators)
+    FormField(field, checked, validators) {
+        Column(modifier = modifier) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = verticalAlignment,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Checkbox(
+                    checked = field.value,
+                    onCheckedChange = { field.value = it },
+                    colors = CheckboxDefaults.colors(
+                        uncheckedColor = if (!field.isValid) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            Color.Unspecified
+                        },
+                    ),
+                    modifier = Modifier
+                        .scale(.8f)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                )
+                Text(text = label)
+            }
+            field.error?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+            }
 
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = verticalAlignment,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Checkbox(
-                checked = field.value,
-                onCheckedChange = { field.value = it },
-                colors = CheckboxDefaults.colors(
-                    uncheckedColor = if (!field.isValid) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        Color.Unspecified
-                    },
-                ),
-                modifier = Modifier
-                    .scale(.8f)
-                    .clip(MaterialTheme.shapes.extraSmall)
-            )
-            Text(text = label)
+            Spacer(Modifier.height(12.dp))
         }
-        field.error?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
     }
 }
 
@@ -118,53 +118,55 @@ fun <T> FormScope.RadioGroup(
     initialValue: String = "",
     validators: List<Validator<String>> = emptyList()
 ) {
-    ValidationEffect(field, initialValue, validators)
-
-    val onItemClick: (T) -> Unit = { item ->
-        val stringValue = transform(item)
-        if (stringValue != field.value) {
-            field.value = stringValue
-        }
-    }
-
-    Column(modifier = modifier) {
-        Text(text = label)
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items.forEach { item ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable { onItemClick(item) }
-                ) {
-                    RadioButton(
-                        selected = transform(item) == field.value,
-                        onClick = { onItemClick(item) },
-                        colors = RadioButtonDefaults.colors(
-                            unselectedColor = if (field.isValid) {
-                                Color.Unspecified
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            }
-                        )
-                    )
-                    itemLabel(item)
-                }
+    FormField(field, initialValue, validators) {
+        val onItemClick: (T) -> Unit = { item ->
+            val stringValue = transform(item)
+            if (stringValue != field.value) {
+                field.value = stringValue
             }
         }
-        field.error?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp)
-            )
+
+        Column(modifier = modifier) {
+            Text(text = label)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items.forEach { item ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.medium)
+                            .clickable { onItemClick(item) }
+                    ) {
+                        RadioButton(
+                            selected = transform(item) == field.value,
+                            onClick = { onItemClick(item) },
+                            colors = RadioButtonDefaults.colors(
+                                unselectedColor = if (field.isValid) {
+                                    Color.Unspecified
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
+                        )
+                        itemLabel(item)
+                    }
+                }
+            }
+            field.error?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
         }
-        Spacer(Modifier.height(12.dp))
     }
+
+
 }
 
 @Composable
@@ -183,55 +185,55 @@ fun <T> FormScope.CheckGroup(
     initialValue: List<T> = emptyList(),
     validators: List<Validator<List<T>>> = emptyList()
 ) {
-    ValidationEffect(field, initialValue, validators)
-
-    val onItemClick: (T) -> Unit = { item ->
-        if (item in field.value) {
-            field.value -= item
-        } else if (field.value.size < limit) {
-            field.value += item
-        }
-    }
-
-    Column(modifier = modifier) {
-        Text(text = label)
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items.forEach { item ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable { onItemClick(item) }
-                ) {
-                    Checkbox(
-                        checked = item in field.value,
-                        onCheckedChange = { onItemClick(item) },
-                        colors = CheckboxDefaults.colors(
-                            uncheckedColor = if (!field.isValid) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                Color.Unspecified
-                            }
-                        ),
-                        modifier = Modifier
-                            .scale(.8f)
-                            .clip(MaterialTheme.shapes.extraSmall)
-                    )
-                    itemLabel(item)
-                }
+    FormField(field, initialValue, validators) {
+        val onItemClick: (T) -> Unit = { item ->
+            if (item in field.value) {
+                field.value -= item
+            } else if (field.value.size < limit) {
+                field.value += item
             }
         }
-        field.error?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp)
-            )
+
+        Column(modifier = modifier) {
+            Text(text = label)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items.forEach { item ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.medium)
+                            .clickable { onItemClick(item) }
+                    ) {
+                        Checkbox(
+                            checked = item in field.value,
+                            onCheckedChange = { onItemClick(item) },
+                            colors = CheckboxDefaults.colors(
+                                uncheckedColor = if (!field.isValid) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    Color.Unspecified
+                                }
+                            ),
+                            modifier = Modifier
+                                .scale(.8f)
+                                .clip(MaterialTheme.shapes.extraSmall)
+                        )
+                        itemLabel(item)
+                    }
+                }
+            }
+            field.error?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
         }
-        Spacer(Modifier.height(12.dp))
     }
 }

@@ -120,12 +120,9 @@ class FormScope internal constructor(
  * The field is initialized with [default] if it has no current value.
  *
  * @param field The [Field] to validate.
- * @param default The initial value applied if the field is not yet initialized.
+ * @param default The default value applied when the field is first initialized
+ * or reinitialized after a form reset.
  * @param validators The list of [Validator]s used to validate the field’s value.
- *
- * @see Field
- * @see Validator
- * @see FormState.shouldShowErrors
  */
 @Composable
 fun <T : Any> FormScope.ValidationEffect(
@@ -147,4 +144,45 @@ fun <T : Any> FormScope.ValidationEffect(
     LaunchedEffect(field.value, validators) {
         field.error = validators.firstOrNull { !it.validate(field.value) }?.errorMessage
     }
+}
+
+/**
+ * A convenience composable that automatically attaches [ValidationEffect]
+ * to the given [field] before rendering its [content].
+ *
+ * This ensures that validation, dirty-state tracking, and default value
+ * initialization are always applied without requiring the consumer to call
+ * [ValidationEffect] manually.
+ *
+ * Typical usage wraps an input element that binds to field.value,
+ * displays field.error, and updates the value as the user types.
+ *
+ * Example:
+ * ```
+ * FormField(EmailField, "", listOf(EmailValidator("Invalid email"))) {
+ *     OutlinedTextField(
+ *         value = EmailField.value,
+ *         onValueChange = { EmailField.value = it },
+ *         isError = !EmailField.isValid,
+ *         supportingText = EmailField.error?.let { { Text(it) } },
+ *         label = { Text("Email") }
+ *     )
+ * }
+ * ```
+ *
+ * @param field The [Field] managed by this input.
+ * @param default The default value applied when the field is first initialized
+ * or reinitialized after a form reset.
+ * @param validators A list of [Validator]s used to validate the field's value.
+ * @param content The composable content that displays and interacts with the field.
+ */
+@Composable
+fun <T : Any> FormScope.FormField(
+    field: Field<T>,
+    default: T,
+    validators: List<Validator<T>> = emptyList(),
+    content: @Composable () -> Unit
+) {
+    ValidationEffect(field, default, validators)
+    content()
 }

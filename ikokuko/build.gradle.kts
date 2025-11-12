@@ -15,7 +15,7 @@ plugins {
 kotlin {
 
     androidLibrary {
-        namespace = "io.github.eosobande.ikokuko"
+        namespace = "com.quantipixels.ikokuko"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 

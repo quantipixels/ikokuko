@@ -110,6 +110,10 @@ Form(onSubmit = {}) {
 ---
 
 ### 4. Build a form
+You can add form fields in two ways:
+
+1. **Manual setup** — call `ValidationEffect` yourself.
+2. **Convenience setup** — use `FormField`, which attaches validation automatically.
 
 ```kotlin
 val EmailField = Field.Text("email")
@@ -128,12 +132,6 @@ fun SignInForm() {
             default = "",
             validators = listOf(RequiredValidator("Email required"), EmailValidator("Invalid email"))
         )
-        ValidationEffect(
-            field = PasswordField,
-            default = "",
-            validators = listOf(RequiredValidator("Password required"), MinLengthValidator("At least 8 characters", 8))
-        )
-
         Column {
             OutlinedTextField(
                 value = EmailField.value,
@@ -142,13 +140,19 @@ fun SignInForm() {
                 supportingText = EmailField.error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
                 onValueChange = { EmailField.value = it }
             )
-            OutlinedTextField(
-                value = PasswordField.value,
-                isError = !PasswordField.isValid,
-                label = { Text("Password") },
-                supportingText = PasswordField.error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                onValueChange = { PasswordField.value = it }
-            )
+            FormField(
+                field = PasswordField,
+                default = "",
+                validators = listOf(RequiredValidator("Password required"), MinLengthValidator("At least 8 characters", 8))
+            ) {
+                OutlinedTextField(
+                    value = PasswordField.value,
+                    isError = !PasswordField.isValid,
+                    label = { Text("Password") },
+                    supportingText = PasswordField.error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    onValueChange = { PasswordField.value = it }
+                )
+            }
             Button(onClick = ::submit, enabled = isValid) {
                 Text("Sign In")
             }
@@ -205,22 +209,22 @@ fun FormScope.TextInput(
     placeholder: String = "",
     validators: List<Validator<String>> = emptyList()
 ) {
-    ValidationEffect(field, initialValue, validators)
-
-    Column(modifier = modifier) {
-        OutlinedTextField(
-            value = field.value,
-            isError = !field.isValid,
-            label = { Text(label) },
-            placeholder = {
-                Text(placeholder,color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f))
-            },
-            supportingText = field.error?.let { { Text(it) } },
-            onValueChange = { field.value = it },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
+    FormField(field, initialValue, validators) {
+        Column(modifier = modifier) {
+            OutlinedTextField(
+                value = field.value,
+                isError = !field.isValid,
+                label = { Text(label) },
+                placeholder = {
+                    Text(placeholder,color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f))
+                },
+                supportingText = field.error?.let { { Text(it) } },
+                onValueChange = { field.value = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
 ```

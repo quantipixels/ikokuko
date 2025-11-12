@@ -1,0 +1,41 @@
+name: Run Validator Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: Build and Test (Kotlin Multiplatform)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Cache Gradle dependencies
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # Make Gradle wrapper executable (required for Linux runners)
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # Run all unit tests (including ValidatorTests)
+      - name: Run tests
+        run: ./gradlew clean test --stacktrace

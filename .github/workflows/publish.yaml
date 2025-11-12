@@ -52,9 +52,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
-          echo "SIGNING_KEY_ID: ${SIGNING_KEY_ID}"
-          echo "SIGNING_KEY_PASSWORD: [REDACTED]"
-          echo "SIGNING_KEY: ${#SIGNING_KEY} characters"
+          echo "SIGNING_KEY_ID: ${#SIGNING_KEY_ID} characters"
           set -e
           ./gradlew clean publish -PversionName=${{ steps.vars.outputs.version }}
 

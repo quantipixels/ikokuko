@@ -1,0 +1,71 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - "release-*"
+
+jobs:
+  publish:
+    if: startsWith(github.ref, 'refs/tags/release-') && github.event.base_ref == 'refs/heads/main'
+    name: Publish Library
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Extract version
+        id: vars
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#release-}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Run Checks & Unit Tests
+        run: ./gradlew clean check --stacktrace
+
+      - name: Publish to Maven Central
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          set -e
+          ./gradlew clean publish -PversionName=${{ steps.vars.outputs.version }}
+
+      - name: Create GitHub Release (draft)
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "v${{ steps.vars.outputs.version }}"
+          body: |
+            **Release v${{ steps.vars.outputs.version }}**
+
+            This version was auto-created from tag **${{ github.ref_name }}**.
+            Edit this description and add release notes before publishing.
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

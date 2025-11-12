@@ -1,4 +1,4 @@
-name: Run Validator Tests
+name: CI Tests
 
 on:
   push:
@@ -38,4 +38,4 @@ jobs:
 
       # Run all unit tests (including ValidatorTests)
       - name: Run tests
-        run: ./gradlew clean test --stacktrace
+        run: ./gradlew clean check --stacktrace

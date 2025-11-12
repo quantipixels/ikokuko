@@ -12,6 +12,9 @@ plugins {
     id("signing")
 }
 
+group = "com.quantipixels"
+version = findProperty("versionName") ?: "0.0.0-SNAPSHOT"
+
 kotlin {
 
     androidLibrary {
@@ -58,27 +61,30 @@ kotlin {
 
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["kotlin"])
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        groupId = project.group.toString()
+        version = project.version.toString()
+    }
 
-                groupId = "com.quantipixels"
-                artifactId = "ikokuko"
-                version = "1.0.0"
-            }
-        }
-
-        repositories {
-            maven {
-                name = "CentralPortal"
-                url = uri("https://central.sonatype.com/api/v1/publisher/deploy")
-                credentials {
-                    username = project.findProperty("mavenCentralUsername") as String?
-                    password = project.findProperty("mavenCentralPassword") as String?
-                }
+    repositories {
+        maven {
+            name = "CentralPortal"
+            url = uri("https://central.sonatype.com/api/v1/publisher/deploy")
+            credentials {
+                username = System.getenv("MAVEN_CENTRAL_USERNAME")
+                password = System.getenv("MAVEN_CENTRAL_PASSWORD")
             }
         }
     }
+}
+
+signing {
+    useInMemoryPgpKeys(
+        System.getenv("SIGNING_KEY_ID"),
+        System.getenv("SIGNING_KEY"),
+        System.getenv("SIGNING_KEY_PASSWORD")
+    )
+    // Sign all created publications (needed for Maven Central)
+    sign(publishing.publications)
 }

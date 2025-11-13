@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.quantipixels:ikokuko:1.0.0")
+    implementation("com.quantipixels:ikokuko:0.1.0")
 }
 ```
 

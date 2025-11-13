@@ -6,15 +6,17 @@ on:
       - "release-*"
 
 jobs:
-  release:
-    if: startsWith(github.ref, 'refs/tags/release-')
+  publish:
+    if: startsWith(github.ref, 'refs/tags/release-') && github.event.base_ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # required for GitHub release
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for changelog generation
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -43,15 +45,43 @@ jobs:
       - name: Run Checks & Unit Tests
         run: ./gradlew clean check --stacktrace
 
-      - name: Run JReleaser full release
+      - name: Publish to Maven Central
         env:
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralDeploymentValidation: "false"
         run: |
-          ./gradlew jreleaserFullRelease \
-            -PversionName=${{ steps.vars.outputs.version }} \
-            -PtagName=${{ github.ref_name }}
+          ./gradlew publishAllPublicationsToMavenCentralRepository \
+            -PversionName=${{ steps.vars.outputs.version }}
+
+      - name: Install Node + Conventional Changelog
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate release changelog
+        id: changelog
+        run: |
+          npm install -g conventional-changelog-cli
+          conventional-changelog -p angular -r 2 > CHANGELOG.md
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "v${{ steps.vars.outputs.version }}"
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false
+          files: |
+            build/libs/*.jar
+            build/outputs/aar/*.aar
+            build/bin/**/*.klib
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 # ìkọkúkọ
 
-> **Reactive, type-safe form and validation library for Compose Multiplatform**  
+> **Reactive, type-safe form validation for Compose Multiplatform (Android & iOS)**  
 > Build declarative, cross-platform forms that validate themselves as users type.
 
 ---
@@ -60,7 +60,7 @@ val TermsField = Field.Boolean("terms")
 ---
 
 ### 3. [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
-`[FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form)` manages all field values, validation errors, and visibility flags for a form.
+`FormState` manages all field values, validation errors, and visibility flags for a form.
 It’s the single source of truth for the form’s current state.
 
 You usually create it with `remember { FormState() }`, optionally passing `shouldShowErrors` to control **initial error visibility behavior**:

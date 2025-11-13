@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalWasmDsl::class)
 
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jreleaser.model.Active
+import org.jreleaser.model.Signing
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,6 +10,7 @@ plugins {
     alias(libs.plugins.androidLint)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.jreleaser)
     id("maven-publish")
     id("signing")
 }
@@ -63,28 +66,73 @@ kotlin {
 
 publishing {
     publications.withType<MavenPublication>().configureEach {
-        groupId = project.group.toString()
-        version = project.version.toString()
+        pom {
+            name.set("Ikokuko")
+            description.set("Reactive, type-safe form validation for Compose Multiplatform (Android & iOS)")
+            url.set("https://github.com/quantipixels/ikokuko")
+            licenses {
+                license {
+                    name.set("Apache License 2.0")
+                    url.set("https://github.com/quantipixels/ikokuko/LICENSE")
+                }
+            }
+            developers {
+                developer {
+                    id.set("eosobande")
+                    name.set("Olúwáṣeun Ṣóbándé")
+                }
+            }
+            scm {
+                connection.set("scm:git:git://github.com/quantipixels/ikokuko.git")
+                developerConnection.set("scm:git:ssh://github.com:quantipixels/ikokuko.git")
+                url.set("https://github.com/quantipixels/ikokuko")
+            }
+        }
     }
 
     repositories {
         maven {
-            name = "ossrh-staging-api"
-            url = uri("https://ossrh-staging-api.central.sonatype.com")
-            credentials {
-                username = System.getenv("MAVEN_CENTRAL_USERNAME")
-                password = System.getenv("MAVEN_CENTRAL_PASSWORD")
-            }
+            setUrl(layout.buildDirectory.dir("staging-deploy"))
         }
     }
 }
 
-signing {
-    useInMemoryPgpKeys(
-        System.getenv("SIGNING_KEY_ID"),
-        System.getenv("SIGNING_KEY"),
-        System.getenv("SIGNING_KEY_PASSWORD")
-    )
-    // Sign all created publications (needed for Maven Central)
-    sign(publishing.publications)
+jreleaser {
+    gitRootSearch = true
+    signing {
+        active = Active.ALWAYS
+        armored = true
+        verify = true
+        mode = Signing.Mode.MEMORY
+        passphrase = System.getenv("SIGNING_KEY_PASSWORD")
+        secretKey = System.getenv("SIGNING_KEY")
+    }
+    release {
+        github {
+            skipTag = true
+            tagName = findProperty("tagName")?.toString()
+            sign = true
+            branch = "main"
+            branchPush = "main"
+            overwrite = true
+            name = findProperty("versionName")?.toString()
+            draft = false
+        }
+    }
+    deploy {
+        maven {
+            mavenCentral.create("sonatype") {
+                active = Active.ALWAYS
+                url = "https://central.sonatype.com/api/v1/publisher"
+                stagingRepository(layout.buildDirectory.dir("staging-deploy").get().toString())
+                setAuthorization("Basic")
+                applyMavenCentralRules = true
+                sign = true
+                checksums = true
+                sourceJar = true
+                javadocJar = true
+                retryDelay = 60
+            }
+        }
+    }
 }

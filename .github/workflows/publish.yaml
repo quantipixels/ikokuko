@@ -6,9 +6,8 @@ on:
       - "release-*"
 
 jobs:
-  publish:
-    if: startsWith(github.ref, 'refs/tags/release-') && github.event.base_ref == 'refs/heads/main'
-    name: Publish Library
+  release:
+    if: startsWith(github.ref, 'refs/tags/release-')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,7 +32,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Extract version
+      - name: Extract version info
         id: vars
         run: |
           TAG=${GITHUB_REF#refs/tags/}
@@ -44,46 +43,15 @@ jobs:
       - name: Run Checks & Unit Tests
         run: ./gradlew clean check --stacktrace
 
-      - name: Publish to Maven Central
+      - name: Run JReleaser full release
         env:
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          CENTRAL_NAMESPACE: com.quantipixels
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          set -e
-          ./gradlew clean publish -PversionName=${{ steps.vars.outputs.version }}
-          
-          # 👇 Transfer the staged upload into the Central Publisher Portal
-
-      - name: Finalize upload in Central Portal
-        env:
-          CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          CENTRAL_TOKEN:    ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          CENTRAL_NAMESPACE: com.quantipixels
-        run: |
-          set -euo pipefail
-          BASE="https://central.sonatype.com/api/v1/publisher"
-          echo "Posting manual upload for namespace: ${CENTRAL_NAMESPACE}"
-          # Must be invoked from the same job (same IP) that did the upload
-          curl -fsSL -X POST \
-            -u "${CENTRAL_USERNAME}:${CENTRAL_TOKEN}" \
-            "${BASE}/manual/upload/defaultRepository/${CENTRAL_NAMESPACE}"
-          echo "Transfer requested. Check Central Portal"
-
-      - name: Create GitHub Release (draft)
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "v${{ steps.vars.outputs.version }}"
-          body: |
-            **Release v${{ steps.vars.outputs.version }}**
-
-            This version was auto-created from tag **${{ github.ref_name }}**.
-            Edit this description and add release notes before publishing.
-          draft: true
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ./gradlew jreleaserFullRelease \
+            -PversionName=${{ steps.vars.outputs.version }} \
+            -PtagName=${{ github.ref_name }}

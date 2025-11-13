@@ -11,6 +11,7 @@ composeMultiplatform = "1.9.1"
 kotlin = "2.2.20"
 runner = "1.7.0"
 core = "1.7.0"
+jreleaser = "1.21.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -30,3 +31,4 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 androidLint = { id = "com.android.lint", version.ref = "agp" }
+jreleaser = { id = "org.jreleaser", version.ref = "jreleaser" }

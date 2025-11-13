@@ -48,12 +48,30 @@ jobs:
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          CENTRAL_NAMESPACE: com.quantipixels
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           set -e
           ./gradlew clean publish -PversionName=${{ steps.vars.outputs.version }}
+          
+          # 👇 Transfer the staged upload into the Central Publisher Portal
+
+      - name: Finalize upload in Central Portal
+        env:
+          CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          CENTRAL_TOKEN:    ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          CENTRAL_NAMESPACE: com.quantipixels
+        run: |
+          set -euo pipefail
+          BASE="https://central.sonatype.com/api/v1/publisher"
+          echo "Posting manual upload for namespace: ${CENTRAL_NAMESPACE}"
+          # Must be invoked from the same job (same IP) that did the upload
+          curl -fsSL -X POST \
+            -u "${CENTRAL_USERNAME}:${CENTRAL_TOKEN}" \
+            "${BASE}/manual/upload/defaultRepository/${CENTRAL_NAMESPACE}"
+          echo "Transfer requested. Check Central Portal"
 
       - name: Create GitHub Release (draft)
         uses: softprops/action-gh-release@v1

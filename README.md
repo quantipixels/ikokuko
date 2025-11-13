@@ -1,5 +1,11 @@
 # ìkọkúkọ
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.quantipixels/ikokuko.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.quantipixels/ikokuko)
+[![License](https://img.shields.io/github/license/quantipixels/ikokuko)](https://github.com/quantipixels/ikokuko/blob/main/LICENSE)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-blue?logo=kotlin)
+![Android](https://img.shields.io/badge/Android-✔-green?logo=android&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-✔-lightgrey?logo=apple&logoColor=white)
+
 > **Reactive, type-safe form validation for Compose Multiplatform (Android & iOS)**  
 > Build declarative, cross-platform forms that validate themselves as users type.
 

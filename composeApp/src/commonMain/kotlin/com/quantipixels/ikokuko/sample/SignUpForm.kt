@@ -61,7 +61,7 @@ enum class Project {
 @Composable
 fun SignUpForm(
     onSubmit: (SignUpData) -> Unit,
-    modifier: Modifier = Modifier.Companion
+    modifier: Modifier = Modifier
 ) {
     Form(
         onSubmit = {

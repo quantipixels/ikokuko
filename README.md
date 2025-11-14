@@ -1,3 +1,5 @@
+<img height="250" alt="Image" src="https://github.com/user-attachments/assets/5e446a23-2fbf-4152-a7ae-118ba0a0493a" />
+
 # ìkọkúkọ
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.quantipixels/ikokuko.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.quantipixels/ikokuko)

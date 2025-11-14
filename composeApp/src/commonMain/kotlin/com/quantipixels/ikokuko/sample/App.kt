@@ -28,7 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ikokuko_cmp.composeapp.generated.resources.Res
-import ikokuko_cmp.composeapp.generated.resources.compose_multiplatform
+import ikokuko_cmp.composeapp.generated.resources.ikokuko
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -52,7 +52,7 @@ fun App() {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(Res.drawable.compose_multiplatform),
+                    painter = painterResource(Res.drawable.ikokuko),
                     contentDescription = null,
                     modifier = Modifier.size(60.dp)
                 )

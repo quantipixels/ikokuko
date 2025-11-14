@@ -308,11 +308,11 @@ ValidationEffect(
 
 ---
 
-## Demo
+## Demo - [Sample App](/composeApp)
 
 See **Ikokuko** — the reactive, type-safe form validation library for Compose Multiplatform (Android & iOS) — in action:
 
-https://github.com/user-attachments/assets/308f35bb-4a10-47d7-826d-90d59d54c74c
+https://github.com/user-attachments/assets/d83ed2e5-5cc0-4034-9cb3-98d355177db5
 
 > This short video showcases real-time validation and error handling using Ikokuko in a Compose Multiplatform sample app.
 

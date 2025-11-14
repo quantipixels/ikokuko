@@ -10,6 +10,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -75,6 +79,9 @@ fun SignUpForm(
             reset()
         }
     ) {
+        var passwordHidden by remember { mutableStateOf(true) }
+        var confirmationHidden by remember { mutableStateOf(true) }
+
         Column(modifier = modifier) {
             TextInput(
                 field = PhoneNumberField,
@@ -97,6 +104,7 @@ fun SignUpForm(
             TextInput(
                 field = PasswordField,
                 label = "Password",
+                isPassword = passwordHidden,
                 validators = listOf(
                     RequiredValidator("password is required"),
                     MinLengthValidator("must be at least 8 characters", 8),
@@ -104,15 +112,28 @@ fun SignUpForm(
                     ContainsPatternValidator("must contain a lowercase character", LowercaseRegex),
                     ContainsPatternValidator("must contain a digit", DigitRegex),
                     ContainsPatternValidator("must contain a symbol", SymbolRegex)
-                )
+                ),
+                trailingIcon = {
+                    PasswordVisibilityToggle(
+                        isHidden = passwordHidden,
+                        onClick = { passwordHidden = !passwordHidden }
+                    )
+                }
             )
             TextInput(
                 field = ConfirmPasswordField,
                 label = "Confirm password",
+                isPassword = confirmationHidden,
                 validators = listOf(
                     RequiredValidator("password confirmation is required"),
                     EqualsValidator("passwords must match") { PasswordField.value }
-                )
+                ),
+                trailingIcon = {
+                    PasswordVisibilityToggle(
+                        isHidden = confirmationHidden,
+                        onClick = { confirmationHidden = !confirmationHidden }
+                    )
+                }
             )
             RadioGroup(
                 field = CapacityField,
@@ -133,7 +154,7 @@ fun SignUpForm(
                     EqualsValidator("you must agree with the terms & conditions") { true }
                 )
             )
-            Spacer(Modifier.Companion.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,

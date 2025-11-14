@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -22,11 +26,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.quantipixels.ikokuko.Field
 import com.quantipixels.ikokuko.FormField
 import com.quantipixels.ikokuko.FormScope
 import com.quantipixels.ikokuko.Validator
+
+@Composable
+fun PasswordVisibilityToggle(
+    isHidden: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Icon(
+        imageVector = if (isHidden){
+            Icons.Outlined.VisibilityOff
+        } else {
+            Icons.Outlined.Visibility
+        },
+        contentDescription = null,
+        modifier = modifier.clickable(onClick = onClick)
+    )
+}
 
 @Composable
 fun FormScope.TextInput(
@@ -35,7 +58,9 @@ fun FormScope.TextInput(
     initialValue: String = "",
     label: String = "",
     placeholder: String = "",
-    validators: List<Validator<String>> = emptyList()
+    isPassword: Boolean = false,
+    validators: List<Validator<String>> = emptyList(),
+    trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     FormField(field, initialValue, validators) {
         Column(modifier = modifier) {
@@ -52,7 +77,13 @@ fun FormScope.TextInput(
                 supportingText = field.error?.let { { Text(it) } },
                 onValueChange = { field.value = it },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                visualTransformation = if (isPassword) {
+                    PasswordVisualTransformation()
+                } else {
+                    VisualTransformation.None
+                },
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = trailingIcon
             )
             Spacer(Modifier.Companion.height(12.dp))
         }

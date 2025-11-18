@@ -160,6 +160,41 @@ class NotEqualsValidator<T>(
     override fun validate(value: T) = value != unwanted()
 }
 
+/**
+ * Validates that a value is contained within a set of allowed values.
+ *
+ * This validator is useful when restricting input to a predefined list
+ * of options, such as gender, country codes, or enum-like selections.
+ *
+ * @param T The type of the value being validated.
+ * @property allowed The collection of allowed values.
+ * @property errorMessage The message returned when validation fails.
+ */
+class InValidator<T>(
+    private val allowed: Collection<T>,
+    override val errorMessage: String
+) : Validator<T> {
+    override fun validate(value: T): Boolean = value in allowed
+}
+
+/**
+ * Validates that a value is **not** contained within a collection
+ * of disallowed or forbidden values.
+ *
+ * Use this validator to prevent specific inputs from being accepted,
+ * such as reserved usernames or blocked keywords.
+ *
+ * @param T The type of the value being validated.
+ * @property disallowed The collection of values that are not permitted.
+ * @property errorMessage The message returned when validation fails.
+ */
+class NotInValidator<T>(
+    private val disallowed: Collection<T>,
+    override val errorMessage: String
+) : Validator<T> {
+    override fun validate(value: T): Boolean = value !in disallowed
+}
+
 /** Validates that a selection is not empty. */
 class NonEmptySelectionValidator<T>(
     override val errorMessage: String
@@ -209,4 +244,30 @@ class SelectionRangeValidator<T>(
     }
 
     override fun validate(value: List<T>) = value.size in min..max
+}
+
+/**
+ * Validates that all elements of a list are contained within
+ * a set of allowed values.
+ *
+ * This validator is typically used for validating multi-select inputs
+ * or lists of user selections, ensuring that each selected item is
+ * part of the allowed options.
+ *
+ * @param T The element type of the collection.
+ * @property allowed The collection of allowed values.
+ * @property allowEmpty Whether an empty list should be considered valid.
+ * @property errorMessage The message returned when validation fails.
+ */
+class SelectionInValidator<T>(
+    private val allowed: Collection<T>,
+    private val allowEmpty: Boolean = false,
+    override val errorMessage: String
+) : Validator<List<T>> {
+    override fun validate(value: List<T>): Boolean =
+        if (value.isEmpty()) {
+            allowEmpty
+        } else {
+            value.all { it in allowed }
+        }
 }

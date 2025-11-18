@@ -85,7 +85,7 @@ fun FormScope.TextInput(
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = trailingIcon
             )
-            Spacer(Modifier.Companion.height(12.dp))
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

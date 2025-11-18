@@ -1,4 +1,4 @@
-<img height="250" alt="Image" src="https://github.com/user-attachments/assets/5e446a23-2fbf-4152-a7ae-118ba0a0493a" />
+![Ikokuko Banner](https://github.com/user-attachments/assets/99fbdbf5-1d3f-4780-89bd-f7569ac0fa51)
 
 # ìkọkúkọ
 
@@ -42,36 +42,11 @@ dependencies {
 
 ---
 
-### 2. Define fields
-You can define `[Field](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Field.kt)` objects as top-level, local, or composable-scoped values — they’re lightweight and can be freely recreated.
-
-```kotlin
-val EmailField = Field.Text("email")
-val PasswordField = Field.Text("password")
-val TermsField = Field.Boolean("terms")
-```
-#### How fields work
-- Field instances are identified by their name, not by object identity.
-- You can safely recreate them on each composition — their state in the form will persist as long as the name stays the same.
-- Field objects are cheap to construct; there’s no need to remember them unless you prefer stable references.
-
-#### Name-based behavior
-|Case|Behaviour|
-|---|---|
-|Same name, same type|Fields share the same value in the FormState. Updating one updates them all.|
-|Same name, different type|Causes a crash when FormScope tries to cast the stored value back to the wrong type.|
-|Different names|Fields maintain independent values and validation states.|
-
-#### Recommended
-> Always ensure that all form fields have unique names within a single `FormScope`.
-
----
-
-### 3. [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
+### 2. [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
 `FormState` manages all field values, validation errors, and visibility flags for a form.
 It’s the single source of truth for the form’s current state.
 
-You usually create it with `remember { FormState() }`, optionally passing `shouldShowErrors` to control **initial error visibility behavior**:
+> Optionally pass shouldShowErrors when creating the state to control its initial error visibility behavior.
 
 ```kotlin
 // Default: errors hidden until submit or manual toggle
@@ -117,55 +92,103 @@ Form(onSubmit = {}) {
 
 ---
 
-### 4. Build a form
-You can add form fields in two ways:
+### 3. Defining [Field](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Field.kt)s
+You can define a `Field` using either typed **constructors** or **generic syntax**, depending on your use case and desired type safety.
 
-1. **Manual setup** — call `ValidationEffect` yourself.
-2. **Convenience setup** — use `FormField`, which attaches validation automatically.
-
+- Typed constructors (recommended for readability) — ìkọkúkọ provides convenience factory functions for the most common field types:
 ```kotlin
 val EmailField = Field.Text("email")
-val PasswordField = Field.Text("password")
+val RememberMeField = Field.Boolean("remember_me")
+val RangeField = Field.Range("price_range") // ClosedFloatingPointRange<Float>
+```
+
+- Generic field syntax (for custom or advanced cases) — You can also define a `Field` directly with its type parameter:
+```kotlin
+val NameField = Field<String>("name")
+val CustomField = Field<MyCustomData>("custom")
+```
+
+You can define `Field` objects as 
+- top-level (or global), 
+- local, or
+- composable-scoped values — they’re lightweight and can be freely recreated.
+
+```kotlin
+// top-level (or global)
+val EmailField = Field.Text("email")
 
 @Composable
-fun SignInForm() {
-    val formState = remember { FormState() }
+fun DemoForm() {
+    // local — recreated on every recomposition (fine for stateless forms)
+    val emailField = Field.Text("email")
 
-    Form(state = formState, onSubmit = {
-        println("Email: ${EmailField.value}")
-        println("Password: ${PasswordField.value}")
-    }) {
-        ValidationEffect(
-            field = EmailField,
-            default = "",
-            validators = listOf(RequiredValidator("Email required"), EmailValidator("Invalid email"))
+    // composable-scoped — stable across recompositions
+    val emailField = remember { Field.Text("email") }
+}
+```
+
+#### How fields work
+- `Field` instances are identified by their name, not by object identity.
+- You can safely recreate them on each composition — their state in the form will persist as long as the name stays the same.
+- `Field` objects are cheap to construct; there’s no need to remember them unless you prefer stable references.
+
+#### Name-based behavior
+|Case|Behaviour|
+|---|---|
+|Same name, same type|Fields share the same value in the FormState. Updating one updates them all.|
+|Same name, different type|Causes a crash when FormScope tries to cast the stored value back to the wrong type.|
+|Different names|Fields maintain independent values and validation states.|
+
+#### Recommended
+> Always ensure that all form fields have unique names within a single `FormScope`.
+
+---
+
+### 4. Add Validation and Connect Fields to the FormState
+
+You can connect fields to your FormState and enable validation in two ways:
+
+- **Manual setup** — call [ValidationEffect](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt) directly to register and validate a field.
+```kotlin
+Form(onSubmit={ println("Email: ${EmailField.value}") }) {
+    ValidationEffect(
+        field = EmailField,
+        default = "",
+        validators = listOf(
+            RequiredValidator("Email required"),
+            EmailValidator("Invalid email")
         )
-        Column {
-            OutlinedTextField(
-                value = EmailField.value,
-                isError = !EmailField.isValid,
-                label = { Text("Email") },
-                supportingText = EmailField.error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                onValueChange = { EmailField.value = it }
-            )
-            FormField(
-                field = PasswordField,
-                default = "",
-                validators = listOf(RequiredValidator("Password required"), MinLengthValidator("At least 8 characters", 8))
-            ) {
-                OutlinedTextField(
-                    value = PasswordField.value,
-                    isError = !PasswordField.isValid,
-                    label = { Text("Password") },
-                    supportingText = PasswordField.error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                    onValueChange = { PasswordField.value = it }
-                )
-            }
-            Button(onClick = ::submit, enabled = isValid) {
-                Text("Sign In")
-            }
-        }
-    }
+    )
+    OutlinedTextField(
+        value = EmailField.value,
+        isError = !EmailField.isValid,
+        label = { Text("Email") },
+        supportingText = EmailField.error?.let {
+            { Text(it, color = MaterialTheme.colorScheme.error) }
+        },
+        onValueChange = { EmailField.value = it }
+    )
+}
+```
+- **Convenience setup** — use FormField, which automatically registers the field and runs validation on value changes.
+```kotlin
+FormField(
+    field = EmailField,
+    default = "",
+    validators = listOf(
+        RequiredValidator("Email required"),
+        EmailValidator("Invalid email")
+    )
+) {
+    OutlinedTextField(
+        value = EmailField.value,
+        isError = !EmailField.isValid,
+        label = { Text("Email") },
+        supportingText = EmailField.error?.let {
+            { Text(it, color = MaterialTheme.colorScheme.error) }
+        },
+        onValueChange = { EmailField.value = it }
+    )
 }
 ```
 
@@ -178,7 +201,8 @@ Each `Field` exposes an `error` property that represents its current validation 
 ```kotlin
 var Field<*>.error: String?
 ```
-Normally, this value is updated automatically by ValidationEffect whenever validators fail, but you can override it manually for advanced use cases such as:
+
+Normally, this value is updated automatically by `ValidationEffect` whenever validators fail, but you can override it manually for advanced use cases such as:
 - Server-side or asynchronous validation (e.g. username already taken).
 - Custom inline validation not covered by existing Validator classes.
 - Resetting or clearing errors programmatically.
@@ -200,7 +224,7 @@ EmailField.error = null
 
 ### 6. Creating Reusable Form Components
 
-Ikokuko’s `[FormScope](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt)` lets you build reusable composable form components that automatically handle value binding, validation, and error display.
+ìkọkúkọ’s [FormScope](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt) lets you build reusable composable form components that automatically handle value binding, validation, and error display.
 This makes it easy to define input fields once and reuse them across different forms.
 
 #### Example: `TextInput`
@@ -224,7 +248,10 @@ fun FormScope.TextInput(
                 isError = !field.isValid,
                 label = { Text(label) },
                 placeholder = {
-                    Text(placeholder,color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f))
+                    Text(
+                        placeholder, 
+                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                    )
                 },
                 supportingText = field.error?.let { { Text(it) } },
                 onValueChange = { field.value = it },
@@ -236,17 +263,84 @@ fun FormScope.TextInput(
     }
 }
 ```
-How it works
-- ValidationEffect attaches validators and ensures the field’s value and errors stay reactive.
-- field.value binds the text input to the form state.
-- field.error provides the active error message when visible.
-- field.isValid drives the error styling (isError = !field.isValid).
+#### How it works
+- `ValidationEffect` attaches validators and ensures the field’s value and errors stay reactive.
+- `field.value` binds the text input to the form state.
+- `field.error` provides the active error message when visible.
+- `field.isValid` drives the error styling (isError = !field.isValid).
 
-All form logic is encapsulated inside the FormScope, so the field automatically integrates with submit(), reset(), and global validation visibility.
+All form logic is encapsulated inside the FormScope, so the field automatically integrates with `submit()`, `reset()`, and global validation visibility.
 
 ---
 
-### 7. Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
+### 7. Build a form
+
+Compose your complete form by combining your defined fields, inputs, and validators inside a Form.
+The Form automatically manages field registration, validation, and submission through a shared FormState.
+It also supports cross-field validation, allowing validators to depend on the values of other fields (e.g. password confirmation, date ranges, matching inputs).
+
+> 💡 This example builds on the reusable `TextInput` component described in the previous section —
+each input is already wired to its corresponding Field and validation logic.
+
+```kotlin
+val EmailField = Field.Text("email")
+val PasswordField = Field.Text("password")
+val ConfirmPasswordField = Field.Text("password")
+
+@Composable
+fun SignUpForm() {
+    val formState = remember { FormState() }
+
+    Form(state = formState, onSubmit = {
+        println("Email: ${EmailField.value}")
+        println("Password: ${PasswordField.value}")
+        println("Password Confirmation: ${ConfirmPasswordField.value}")
+    }) {
+        Column {
+            TextInput(
+                field = EmailField,
+                label = "Email",
+                validators = listOf(
+                    RequiredValidator("Email required"),
+                    EmailValidator("Invalid email")
+                )
+            )
+            TextInput(
+                field = PasswordField,
+                label = "Password",
+                validators = listOf(
+                    RequiredValidator("Password required"), 
+                    MinLengthValidator("At least 8 characters", 8)
+                )
+            )
+
+            // Cross-field validation
+            // The EqualsValidator references PasswordField.value to ensure both match.
+            TextInput(
+                field = ConfirmPasswordField,
+                label = "Password Confirmation",
+                validators = listOf(
+                    RequiredValidator("password confirmation is required"),
+                    EqualsValidator("passwords must match") { PasswordField.value }
+                )
+            )
+            Button(onClick = ::submit, enabled = isValid) {
+                Text("Sign In")
+            }
+        }
+    }
+}
+```
+
+#### Notes
+- Uses the `TextInput` reusable component defined in the previous section.
+- `FormState` tracks and validates all registered fields automatically.
+- The `onSubmit` callback executes only when all validations pass.
+- Cross-field validation allows validators to reference other field values dynamically (e.g., matching fields or dependent ranges).
+- The `isValid` property enables you to toggle UI elements like buttons based on current form validity.
+---
+
+### 8. Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
 
 #### Text
 | Validator | Description |
@@ -272,6 +366,12 @@ All form logic is encapsulated inside the FormScope, so the field automatically 
 | `PhoneNumberValidator` | E.164 phone format |
 
 #### Equality
+| Validator        | Description |
+|------------------|-------------|
+| `InValidator`    | Value must be in the allowed set |
+| `NotInValidator` | Value must not be in the disallowed set |
+
+#### Membership
 | Validator | Description |
 |------------|-------------|
 | `EqualsValidator` | Must equal expected value |
@@ -285,6 +385,7 @@ All form logic is encapsulated inside the FormScope, so the field automatically 
 | `MaxSelectionValidator` | At most N items |
 | `ExactSelectionValidator` | Exactly N items |
 | `SelectionRangeValidator` | Between min and max items |
+| `SelectionInValidator` | Ensures all selected values are within the allowed options |
 
 #### Custom Validators
 

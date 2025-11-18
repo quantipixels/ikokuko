@@ -7,6 +7,9 @@ import kotlin.test.assertTrue
 
 class ValidatorTest {
 
+    private val allowed = listOf("A", "B", "C")
+    private val disallowed = listOf("X", "Y", "Z")
+
     @Test
     fun requiredValidator_passes_on_non_blank() {
         val validator = RequiredValidator("Cannot be blank")
@@ -230,6 +233,68 @@ class ValidatorTest {
         assertFailsWith<IllegalArgumentException> {
             SelectionRangeValidator<String>("Invalid", min = 5, max = 3)
         }
+    }
+
+    @Test
+    fun `InValidator returns true for allowed value`() {
+        val validator = InValidator(allowed, "Value not allowed")
+        assertTrue(validator.validate("A"))
+        assertTrue(validator.validate("B"))
+    }
+
+    @Test
+    fun `InValidator returns false for disallowed value`() {
+        val validator = InValidator(allowed, "Value not allowed")
+        assertFalse(validator.validate("X"))
+        assertFalse(validator.validate("Z"))
+    }
+
+    @Test
+    fun `InValidator returns false for value not in list`() {
+        val validator = InValidator(allowed, "Invalid value")
+        assertFalse(validator.validate("D"))
+    }
+
+    @Test
+    fun `NotInValidator returns true for allowed value`() {
+        val validator = NotInValidator(disallowed, "Value forbidden")
+        assertTrue(validator.validate("A"))
+        assertTrue(validator.validate("123"))
+    }
+
+    @Test
+    fun `NotInValidator returns false for disallowed value`() {
+        val validator = NotInValidator(disallowed, "Value forbidden")
+        assertFalse(validator.validate("X"))
+        assertFalse(validator.validate("Y"))
+    }
+
+    @Test
+    fun `SelectionInValidator returns true when all values allowed`() {
+        val validator = SelectionInValidator(allowed, errorMessage = "Invalid selection")
+        val result = validator.validate(listOf("A", "B"))
+        assertTrue(result)
+    }
+
+    @Test
+    fun `SelectionInValidator returns false when any value disallowed`() {
+        val validator = SelectionInValidator(allowed, errorMessage = "Invalid selection")
+        val result = validator.validate(listOf("A", "Z"))
+        assertFalse(result)
+    }
+
+    @Test
+    fun `SelectionInValidator allows empty list when allowEmpty true`() {
+        val validator = SelectionInValidator(allowed, allowEmpty = true, errorMessage = "Invalid selection")
+        val result = validator.validate(emptyList())
+        assertTrue(result)
+    }
+
+    @Test
+    fun `SelectionInValidator rejects empty list when allowEmpty false`() {
+        val validator = SelectionInValidator(allowed, allowEmpty = false, errorMessage = "Invalid selection")
+        val result = validator.validate(emptyList())
+        assertFalse(result)
     }
 
 }

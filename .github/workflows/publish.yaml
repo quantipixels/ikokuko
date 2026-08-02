@@ -1,49 +1,95 @@
-name: Publish Release
+name: Publish
 
 on:
   push:
     tags:
       - "release-*"
 
+permissions:
+  contents: read
+
 jobs:
-  publish:
-    if: startsWith(github.ref, 'refs/tags/release-') && github.event.base_ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write   # required for GitHub release
-
+  verify-x64:
+    runs-on: macos-15-intel
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # full history for changelog generation
+      - name: Check out source
+        uses: actions/checkout@v5
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
 
-      - name: Extract version info
-        id: vars
+      - name: Run Intel simulator checks
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG#release-}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Detected version: $VERSION"
+          ./gradlew \
+            :ikokuko:iosX64Test \
+            :samples:composeApp:iosX64Test \
+            :samples:composeApp:linkDebugFrameworkIosX64 \
+            --stacktrace
 
-      - name: Run Checks & Unit Tests
-        run: ./gradlew clean check --stacktrace
+  publish:
+    needs: verify-x64
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify release commit is on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#release-}"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release tag must use release-MAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+          grep -F "## [$version]" CHANGELOG.md
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Run Android and Apple Silicon checks
+        run: ./gradlew clean check -PVERSION_NAME=${{ steps.version.outputs.value }} --stacktrace
+
+      - name: Build the runnable compatibility showcase
+        run: |
+          ./gradlew \
+            :samples:composeApp:testDebugUnitTest \
+            :samples:composeApp:iosSimulatorArm64Test \
+            :samples:composeApp:assembleDebug \
+            :samples:composeApp:linkDebugFrameworkIosArm64 \
+            :samples:composeApp:linkDebugFrameworkIosSimulatorArm64 \
+            --stacktrace
+
+      - name: Build the iOS host app
+        run: |
+          xcodebuild \
+            -project samples/iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Publish to Maven Central
         env:
@@ -52,35 +98,4 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: |
-          ./gradlew publishAllPublicationsToMavenCentralRepository \
-            -PversionName=${{ steps.vars.outputs.version }}
-
-      - name: Install Node + Conventional Changelog
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Generate release changelog
-        id: changelog
-        run: |
-          npm install -g conventional-changelog-cli
-          conventional-changelog -p angular -r 2 > CHANGELOG.md
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          cat CHANGELOG.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "v${{ steps.vars.outputs.version }}"
-          body: ${{ steps.changelog.outputs.body }}
-          draft: false
-          prerelease: false
-          files: |
-            build/libs/*.jar
-            build/outputs/aar/*.aar
-            build/bin/**/*.klib
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew publishAllPublicationsToMavenCentralRepository -PVERSION_NAME=${{ steps.version.outputs.value }} --stacktrace

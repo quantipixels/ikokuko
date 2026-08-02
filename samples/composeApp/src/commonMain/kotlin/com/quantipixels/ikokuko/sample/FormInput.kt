@@ -66,7 +66,7 @@ fun FormScope.TextInput(
         Column(modifier = modifier) {
             OutlinedTextField(
                 value = field.value,
-                isError = !field.isValid,
+                isError = field.shouldDisplayError,
                 label = { Text(label) },
                 placeholder = {
                     Text(
@@ -74,7 +74,11 @@ fun FormScope.TextInput(
                         color = MaterialTheme.colorScheme.secondary.copy(alpha = .7f)
                     )
                 },
-                supportingText = field.error?.let { { Text(it) } },
+                supportingText = if (field.shouldDisplayError) {
+                    field.error?.let { { Text(it) } }
+                } else {
+                    null
+                },
                 onValueChange = { field.value = it },
                 singleLine = true,
                 visualTransformation = if (isPassword) {
@@ -110,7 +114,7 @@ fun FormScope.CheckBox(
                     checked = field.value,
                     onCheckedChange = { field.value = it },
                     colors = CheckboxDefaults.colors(
-                        uncheckedColor = if (!field.isValid) {
+                        uncheckedColor = if (field.shouldDisplayError) {
                             MaterialTheme.colorScheme.error
                         } else {
                             Color.Unspecified
@@ -122,7 +126,7 @@ fun FormScope.CheckBox(
                 )
                 Text(text = label)
             }
-            field.error?.let {
+            field.error.takeIf { field.shouldDisplayError }?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
@@ -174,10 +178,10 @@ fun <T> FormScope.RadioGroup(
                             selected = transform(item) == field.value,
                             onClick = { onItemClick(item) },
                             colors = RadioButtonDefaults.colors(
-                                unselectedColor = if (field.isValid) {
-                                    Color.Unspecified
-                                } else {
+                                unselectedColor = if (field.shouldDisplayError) {
                                     MaterialTheme.colorScheme.error
+                                } else {
+                                    Color.Unspecified
                                 }
                             )
                         )
@@ -185,7 +189,7 @@ fun <T> FormScope.RadioGroup(
                     }
                 }
             }
-            field.error?.let {
+            field.error.takeIf { field.shouldDisplayError }?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
@@ -242,7 +246,7 @@ fun <T> FormScope.CheckGroup(
                             checked = item in field.value,
                             onCheckedChange = { onItemClick(item) },
                             colors = CheckboxDefaults.colors(
-                                uncheckedColor = if (!field.isValid) {
+                                uncheckedColor = if (field.shouldDisplayError) {
                                     MaterialTheme.colorScheme.error
                                 } else {
                                     Color.Unspecified
@@ -256,7 +260,7 @@ fun <T> FormScope.CheckGroup(
                     }
                 }
             }
-            field.error?.let {
+            field.error.takeIf { field.shouldDisplayError }?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,

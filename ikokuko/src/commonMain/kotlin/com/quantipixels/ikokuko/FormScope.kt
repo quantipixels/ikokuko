@@ -1,79 +1,79 @@
 package com.quantipixels.ikokuko
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 
 /**
- * Provides access to all form-related data and actions within a [Form] composition.
- *
- * A [FormScope] exposes extension properties on [Field] for reading and writing values,
- * checking validation results, and interacting with the form lifecycle through [submit]
- * and [reset].
- *
- * It’s created automatically by [Form] and passed to both the form body and onSubmit.
+ * Provides typed field data and form actions inside a [Form] composition.
  */
 @Suppress("UNCHECKED_CAST")
 class FormScope internal constructor(
-    private val state: FormState,
+    internal val state: FormState,
     private val onSubmit: FormScope.() -> Unit
 ) {
-    /** All [Field]s currently registered in this form. */
+    internal val validationScope: ValidationScope = StateValidationScope(this)
+
+    /** All initialized fields in this form. */
     val fields: Set<Field<*>>
         get() = state.values.keys
 
-    /** True if the [Field] has been initialized and holds a value. */
+    /** Returns `true` when this field has an initialized value. */
     val Field<*>.isInitialized: Boolean
-        get() = this in fields
+        get() = this in state.values
 
     /**
-     * The current value of this [Field].
+     * The current value of this field.
      *
-     * Fields are initialized with their default value through [ValidationEffect].
-     * Reading this property before initialization throws an error.
+     * A changed value marks an initialized field as dirty. Initial assignment by
+     * [ValidationEffect] bypasses this setter and keeps the field pristine.
      */
     var <T : Any> Field<T>.value: T
         get() = state.values[this] as? T
-            ?: error("Field '$name' accessed before initialization. Call ValidationEffect(...) for this field first.")
+            ?: error(
+                "Field '$name' accessed before initialization. " +
+                    "Call ValidationEffect(...) for this field first."
+            )
         set(value) {
-            state.values[this] = value
-        }
-
-    /**
-     * Indicates whether this [Field] has been modified since it was initialized or last reset.
-     *
-     * A field becomes dirty when its value changes from the default provided in
-     * [ValidationEffect], or when [markAsDirty] is called manually.
-     *
-     * This property is typically used to control when validation errors or visual feedback
-     * should be displayed for a particular field.
-     */
-    val <T> Field<T>.isDirty: Boolean
-        get() = this in state.dirtyFields
-
-    /**
-     * The current validation error message for this [Field], or `null` if none.
-     *
-     * Prevents premature error display before user interaction or explicit error visibility.
-     */
-    var Field<*>.error: String?
-        get() = if (isDirty && state.shouldShowErrors) state.errors[name] else null
-        set(value) {
-            if (value != null) {
-                state.errors[name] = value
-            } else {
-                state.errors.remove(name)
+            val wasInitialized = isInitialized
+            val previousValue = state.values[this]
+            if (!wasInitialized || previousValue != value) {
+                state.values[this] = value
+                if (wasInitialized) isDirty = true
             }
         }
 
-    /** Indicates whether this [Field] is currently valid. */
-    val Field<*>.isValid: Boolean
-        get() = !state.shouldShowErrors || error == null
+    /** Controls whether this field is marked as dirty. */
+    var Field<*>.isDirty: Boolean
+        get() = this in state.dirtyFields
+        set(value) {
+            if (value) {
+                if (!isDirty) state.dirtyFields.add(this)
+            } else {
+                state.dirtyFields.remove(this)
+            }
+        }
 
-    /** @see [FormState.isValid] */
+    /** The current stored error. Error visibility does not change this value. */
+    var Field<*>.error: String?
+        get() = state.errors[name]
+        set(value) {
+            if (value == null) state.errors.remove(name) else state.errors[name] = value
+        }
+
+    /** Returns `true` when this field has no stored error. */
+    val Field<*>.isValid: Boolean
+        get() = name !in state.errors
+
+    /** Returns `true` when the UI must display this field's stored error. */
+    val Field<*>.shouldDisplayError: Boolean
+        get() = isDirty && state.shouldShowErrors && !isValid
+
+    /** Returns `true` when the form has no stored errors. */
     val isValid: Boolean
         get() = state.isValid
 
-    /** @see [FormState.shouldShowErrors] */
+    /** Controls whether dirty field errors can be displayed. */
     var shouldShowErrors: Boolean
         get() = state.shouldShowErrors
         set(value) {
@@ -81,108 +81,64 @@ class FormScope internal constructor(
         }
 
     /**
-     * Marks this [Field] as dirty, indicating that its value has been modified
-     * or interacted with by the user.
-     *
-     * Normally, fields are automatically marked as dirty when their [FormScope.value]
-     * is changed, but this can be invoked manually for custom interaction flows
-     * or programmatic updates.
+     * Marks all initialized fields as dirty and enables error display.
+     * Calls the form submit callback only when the form is valid.
      */
-    fun Field<*>.markAsDirty() {
-        if (!isDirty) state.dirtyFields.add(this)
-    }
-
-    /**
-     * Shows errors and triggers form submission.
-     *
-     * If the form is valid, [onSubmit] is executed.
-     * Otherwise, [onInvalid] is invoked (if provided).
-     */
-    fun submit(onInvalid: (() -> Unit)? = null) {
-        fields.forEach { it.markAsDirty() }
+    fun submit(onInvalid: () -> Unit = {}) {
+        fields.forEach { it.isDirty = true }
         state.shouldShowErrors = true
-        if (state.isValid) onSubmit() else onInvalid?.invoke()
+        if (state.isValid) onSubmit() else onInvalid()
     }
 
-    /** @see [FormState.reset] */
+    /** Clears all state in this form. */
     fun reset() = state.reset()
 }
 
+private class StateValidationScope(
+    private val scope: FormScope
+) : ValidationScope {
+    override val <T : Any> Field<T>.value: T
+        get() = with(scope) { value }
+}
+
 /**
- * Attaches validation logic to a [field] within a [FormScope].
- *
- * This composable reacts to changes in the field’s [FormScope.value] property or in [validators],
- * running each validator and updating the field’s [FormScope.error] accordingly.
- *
- * Validation runs continuously, but errors are only visible when
- * [FormState.shouldShowErrors] is `true`.
- *
- * The field is initialized with [default] if it has no current value.
- *
- * @param field The [Field] to validate.
- * @param default The default value applied when the field is first initialized
- * or reinitialized after a form reset.
- * @param validators The list of [Validator]s used to validate the field’s value.
+ * Initializes [field] once and validates it when its value, validators, or declared
+ * dependency values change. Use one ValidationEffect for each field in a form.
  */
 @Composable
 fun <T : Any> FormScope.ValidationEffect(
     field: Field<T>,
-    default: T,
+    initialValue: T,
     validators: List<Validator<T>>
 ) {
-    // initialize (or reinitialize after reset).
-    // Must set default before launching validation; if not initialized,
-    // reading field.value in LaunchedEffect would throw.
-    if (!field.isInitialized) field.value = default
+    if (!field.isInitialized) state.values[field] = initialValue
 
-    // Skip validation until the field value diverges from its default.
-    if (field.value != default && !field.isDirty) {
-        LaunchedEffect(Unit) { field.markAsDirty() }
+    DisposableEffect(field) {
+        onDispose { field.error = null }
     }
 
-    // Always validate; visibility of the error is controlled by Field.error itself.
-    LaunchedEffect(field.value, validators) {
-        field.error = validators.firstOrNull { !it.validate(field.value) }?.errorMessage
+    val value = field.value
+    val dependencyValues = validators
+        .flatMap(Validator<*>::dependencies)
+        .distinct()
+        .mapNotNull(state.values::get)
+
+    LaunchedEffect(value, validators, dependencyValues, state.resetKey) {
+        field.error = validators.firstOrNull { validator ->
+            validator.dependencies.all { it.isInitialized } &&
+                !with(validator) { validationScope.validate(value) }
+        }?.errorMessage
     }
 }
 
-/**
- * A convenience composable that automatically attaches [ValidationEffect]
- * to the given [field] before rendering its [content].
- *
- * This ensures that validation, dirty-state tracking, and default value
- * initialization are always applied without requiring the consumer to call
- * [ValidationEffect] manually.
- *
- * Typical usage wraps an input element that binds to field.value,
- * displays field.error, and updates the value as the user types.
- *
- * Example:
- * ```
- * FormField(EmailField, "", listOf(EmailValidator("Invalid email"))) {
- *     OutlinedTextField(
- *         value = EmailField.value,
- *         onValueChange = { EmailField.value = it },
- *         isError = !EmailField.isValid,
- *         supportingText = EmailField.error?.let { { Text(it) } },
- *         label = { Text("Email") }
- *     )
- * }
- * ```
- *
- * @param field The [Field] managed by this input.
- * @param default The default value applied when the field is first initialized
- * or reinitialized after a form reset.
- * @param validators A list of [Validator]s used to validate the field's value.
- * @param content The composable content that displays and interacts with the field.
- */
+/** Initializes and validates [field] before composing [content]. */
 @Composable
 fun <T : Any> FormScope.FormField(
     field: Field<T>,
-    default: T,
+    initialValue: T,
     validators: List<Validator<T>> = emptyList(),
     content: @Composable () -> Unit
 ) {
-    ValidationEffect(field, default, validators)
+    ValidationEffect(field, initialValue, validators)
     content()
 }

@@ -109,6 +109,43 @@ class FormRecompositionTest {
         }
 
     @Test
+    fun replacing_form_state_disposes_the_old_form_and_validates_the_new_form() =
+        runCompositionTest {
+            val field = Field.Text("email")
+            val firstState = FormState()
+            val secondState = FormState()
+            var currentState by mutableStateOf(firstState)
+            lateinit var currentScope: FormScope
+
+            setContent {
+                Form(state = currentState, onSubmit = {}) {
+                    ValidationEffect(
+                        field = field,
+                        initialValue = "",
+                        validators = listOf(RequiredValidator(VALIDATION_ERROR))
+                    )
+                    SideEffect { currentScope = this }
+                }
+            }
+            waitForIdle()
+
+            val firstScope = currentScope
+            runOnIdle {
+                with(firstScope) {
+                    assertEquals(VALIDATION_ERROR, field.error)
+                    field.error = EXTERNAL_ERROR
+                }
+                currentState = secondState
+            }
+            waitForIdle()
+
+            runOnIdle {
+                with(firstScope) { assertNull(field.error) }
+                with(currentScope) { assertEquals(VALIDATION_ERROR, field.error) }
+            }
+        }
+
+    @Test
     fun changing_a_dependency_revalidates_the_dependent_field() = runCompositionTest {
         val password = Field.Text("password")
         val confirmation = Field.Text("confirmation")

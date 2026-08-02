@@ -3,6 +3,7 @@ package com.quantipixels.ikokuko
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -21,7 +22,8 @@ import androidx.compose.runtime.setValue
  * The provided [FormScope] gives access to helper methods like [FormScope.submit]
  * and [FormScope.reset].
  *
- * @param state The [FormState] instance backing this form.
+ * @param state The [FormState] instance backing this form. A different instance replaces the form
+ * content subtree and disposes effects owned by the previous form.
  * @param onSubmit Called when [FormScope.submit] is triggered and the form is valid.
  * @param content The form body, scoped to [FormScope].
  */
@@ -35,7 +37,9 @@ fun Form(
     val scope = remember(state) {
         FormScope(state) { currentOnSubmit.value(this) }
     }
-    scope.content()
+    key(state) {
+        scope.content()
+    }
 }
 
 /**

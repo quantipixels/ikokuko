@@ -69,11 +69,11 @@ class FormScope internal constructor(
     val Field<*>.shouldDisplayError: Boolean
         get() = isDirty && state.shouldShowErrors && !isValid
 
-    /** Returns `true` when the form has no stored errors. */
+    /** Returns `true` when stored errors do not currently block the form. */
     val isValid: Boolean
         get() = state.isValid
 
-    /** Controls whether dirty field errors can be displayed. */
+    /** Controls whether stored errors affect form validity and can be shown for dirty fields. */
     var shouldShowErrors: Boolean
         get() = state.shouldShowErrors
         set(value) {

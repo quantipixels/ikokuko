@@ -46,7 +46,9 @@ dependencies {
 `FormState` manages all field values, validation errors, and visibility flags for a form.
 It’s the single source of truth for the form’s current state.
 
-`FormState.isValid` is strict. It is `false` whenever any field has a stored error. Error visibility does not change validity.
+`FormState.isValid` follows the form's error-reporting state. It remains `true` while
+`shouldShowErrors` is `false`. After error reporting is enabled, it is `false` while any field has
+a stored error. Individual `field.isValid` values remain strict regardless of error visibility.
 
 > Optionally pass `shouldShowErrors` when creating the state to control its initial error visibility behavior.
 
@@ -76,8 +78,8 @@ its error until it becomes dirty. `submit()` marks all initialized fields as dir
 
 |Value|Behaviour|Typical Use Case|
 |---|---|---|
-|`false` (default)|Validation runs continuously, but dirty-field errors remain hidden.|Use when errors must first appear after `submit()` or a manual toggle.|
-|`true`|Stored errors are visible for dirty fields. Pristine-field errors remain hidden.|Use when validation messages must appear as a field changes.|
+|`false` (default)|Validation runs continuously, but dirty-field errors remain hidden and `FormState.isValid` remains `true`.|Use when errors must first affect the UI after `submit()` or a manual toggle.|
+|`true`|Stored errors affect `FormState.isValid` and are visible for dirty fields. Pristine-field errors remain hidden.|Use when validation must affect the UI as fields change.|
 
 You can toggle this flag at any time from either the FormState or inside the FormScope.
 ```kotlin
@@ -358,7 +360,8 @@ fun SignUpForm() {
 - `FormState` tracks and validates all registered fields automatically.
 - The `onSubmit` callback executes only when all validations pass.
 - Cross-field validators declare the fields they read. A dependency value change revalidates the target field.
-- The `isValid` property enables you to toggle UI elements like buttons based on current form validity.
+- The form `isValid` property remains `true` until error reporting is enabled. After the first
+  `submit()`, stored errors can disable UI elements such as this button.
 - `submit()` uses the latest completed reactive validation cycle. Do not assign a field value and call `submit()` synchronously in the same callback.
 ---
 
@@ -456,8 +459,8 @@ Declare every field read during validation in `dependencies`.
 - Replace `field.markAsDirty()` with `field.isDirty = true`. The `isDirty` property is now writable.
 - Remove explicit `null` arguments from `submit(onInvalid)`. Its fallback is now a non-null no-op
   callback.
-- Use `field.shouldDisplayError` for rendering. `field.error`, `field.isValid`, and
-  `FormState.isValid` now expose strict stored state.
+- Use `field.shouldDisplayError` for rendering. `field.error` and `field.isValid` expose strict
+  stored field state. `FormState.isValid` ignores stored errors until error reporting is enabled.
 - Update custom validators to implement `fun ValidationScope.validate(value: T)`. Declare each
   field read by validation in `dependencies`.
 - Use stable structural equality for inline custom validators. Prefer data classes, and remember

@@ -44,7 +44,7 @@ fun Form(
  * Acts as the single source of truth for all form data and validation state.
  * Can be remembered in a composable or hoisted to persist across navigation.
  *
- * @param shouldShowErrors Whether validation errors should be visible initially.
+ * @param shouldShowErrors Whether stored errors should affect form validity and be visible initially.
  */
 @Stable
 class FormState(shouldShowErrors: Boolean = false) {
@@ -95,7 +95,7 @@ class FormState(shouldShowErrors: Boolean = false) {
         private set
 
     /**
-     * Controls when validation errors become visible.
+     * Controls whether stored errors affect form validity and can be shown for dirty fields.
      * Validation still runs reactively regardless of this flag.
      */
     var shouldShowErrors by mutableStateOf(shouldShowErrors)
@@ -108,10 +108,13 @@ class FormState(shouldShowErrors: Boolean = false) {
         get() = dirtyFields.isNotEmpty()
 
     /**
-     * Indicates whether the form has no stored validation or external errors.
+     * Indicates whether stored errors currently block the form.
+     *
+     * Returns `true` while error reporting is disabled. When error reporting is enabled,
+     * returns `true` only when the form has no stored validation or external errors.
      */
     val isValid: Boolean
-        get() = errors.isEmpty()
+        get() = !shouldShowErrors || errors.isEmpty()
 
     /**
      * Clears all field values, errors, dirty state, and error visibility.

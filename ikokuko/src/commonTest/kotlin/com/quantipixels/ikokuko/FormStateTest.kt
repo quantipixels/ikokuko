@@ -13,7 +13,7 @@ class FormStateTest {
     private val saveScope = SaverScope { true }
 
     @Test
-    fun validity_is_strict_and_error_display_is_separate() {
+    fun form_validity_follows_error_reporting_while_field_validity_is_strict() {
         val field = Field.Text("email")
         val state = FormState()
         val scope = FormScope(state) {}
@@ -23,7 +23,7 @@ class FormStateTest {
             field.error = "required"
 
             assertFalse(field.isValid)
-            assertFalse(isValid)
+            assertTrue(isValid)
             assertEquals("required", field.error)
             assertFalse(field.shouldDisplayError)
 
@@ -81,7 +81,7 @@ class FormStateTest {
     }
 
     @Test
-    fun submit_uses_strict_validity_and_marks_initialized_fields_dirty() {
+    fun submit_enables_error_reporting_before_checking_validity_and_marks_fields_dirty() {
         val field = Field.Text("email")
         val state = FormState()
         var submitted = false
@@ -123,6 +123,7 @@ class FormStateTest {
             assertTrue(name.isDirty)
             assertEquals("invalid", name.error)
             assertTrue(shouldShowErrors)
+            assertFalse(isValid)
         }
     }
 

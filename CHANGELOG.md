@@ -6,7 +6,7 @@ All notable changes to Ikokuko are recorded in this file.
 
 ## [0.2.0]
 
-- Add strict validation state and `Field.shouldDisplayError`.
+- Add strict field validation state and `Field.shouldDisplayError`.
 - Add dependency-aware cross-field validation with `FieldEqualsValidator`.
 - Add `CheckedValidator` and `SelectionRangeValidator`.
 - Add `rememberSaveableFormState()` and custom value-saver support.
@@ -16,7 +16,7 @@ All notable changes to Ikokuko are recorded in this file.
 - Make numeric validators parse integer text without transform lambdas.
 - Make pattern validators accept pattern strings instead of `Regex` objects.
 - Make `Field<T>` non-nullable and make `Field.isDirty` writable.
-- Make field and form validity independent from error visibility.
+- Make form validity follow error reporting while field validity remains strict.
 - Reset values, errors, dirty state, and error visibility before revalidation.
 - Limit published and documented support to Android and iOS.
 - Remove fixed email and phone validators. Use `MatchPatternValidator` with an application pattern.

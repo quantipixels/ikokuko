@@ -29,6 +29,37 @@ import kotlin.test.assertTrue
 class FormRecompositionTest {
 
     @Test
+    fun initial_validation_does_not_block_the_form_until_error_reporting_is_enabled() =
+        runCompositionTest {
+            val field = Field.Text("required")
+            lateinit var formScope: FormScope
+
+            setContent {
+                Form(onSubmit = {}) {
+                    ValidationEffect(
+                        field = field,
+                        initialValue = "",
+                        validators = listOf(RequiredValidator(VALIDATION_ERROR))
+                    )
+                    SideEffect { formScope = this }
+                }
+            }
+            waitForIdle()
+
+            runOnIdle {
+                with(formScope) {
+                    assertEquals(VALIDATION_ERROR, field.error)
+                    assertFalse(field.isValid)
+                    assertTrue(isValid)
+
+                    shouldShowErrors = true
+
+                    assertFalse(isValid)
+                }
+            }
+        }
+
+    @Test
     fun equivalent_inline_validator_recreation_preserves_external_error_without_field_change() =
         runCompositionTest {
             val field = Field.Text("email")
@@ -361,7 +392,7 @@ class FormRecompositionTest {
                     field.isDirty = true
                     assertTrue(field in fields)
                     assertEquals(VALIDATION_ERROR, field.error)
-                    assertFalse(isValid)
+                    assertTrue(isValid)
                 }
                 showField = false
             }
@@ -385,7 +416,7 @@ class FormRecompositionTest {
                     assertEquals("", field.value)
                     assertTrue(field.isDirty)
                     assertEquals(VALIDATION_ERROR, field.error)
-                    assertFalse(isValid)
+                    assertTrue(isValid)
                 }
             }
         }

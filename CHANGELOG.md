@@ -4,7 +4,7 @@ All notable changes to Ikokuko are recorded in this file.
 
 ## [Unreleased]
 
-## [0.2.0]
+## [0.2.0] - 2026-08-02
 
 - Add strict field validation state and `Field.shouldDisplayError`.
 - Add dependency-aware cross-field validation with `FieldEqualsValidator`.

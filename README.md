@@ -20,7 +20,7 @@
 - **Reactive validation** – runs automatically when field values change.  
 - **Type-safe fields** – `Field<T>` enforces consistent types.  
 - **Composable DSL** – define forms and validators declaratively.  
-- **Platform-agnostic** – works on Android, Desktop, iOS, JS, and Wasm.  
+- **Multiplatform** – supports Android and iOS.
 - **Built-in validators** – text, numeric, pattern, equality, selection.  
 - **Extendable** – implement your own `Validator<T>` easily.
 
@@ -36,7 +36,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.quantipixels:ikokuko:0.1.0")
+    implementation("com.quantipixels:ikokuko:0.2.0")
 }
 ```
 
@@ -46,33 +46,51 @@ dependencies {
 `FormState` manages all field values, validation errors, and visibility flags for a form.
 It’s the single source of truth for the form’s current state.
 
-> Optionally pass shouldShowErrors when creating the state to control its initial error visibility behavior.
+`FormState.isValid` follows the form's error-reporting state. It remains `true` while
+`shouldShowErrors` is `false`. After error reporting is enabled, it is `false` while any field has
+a stored error. Individual `field.isValid` values remain strict regardless of error visibility.
+
+> Optionally pass `shouldShowErrors` when creating the state to control its initial error visibility behavior.
 
 ```kotlin
-// Default: errors hidden until submit or manual toggle
+// Default: dirty-field errors are hidden until submit or a manual toggle
 val formState = remember { FormState() }
 
-// Errors become visible after submit or as fields change (dirty)
+// Dirty-field errors can be displayed immediately
 val formState = remember { FormState(shouldShowErrors = true) }
 ```
 
+Use `rememberSaveableFormState()` when field values must survive supported platform state restoration:
+
+```kotlin
+val formState = rememberSaveableFormState()
+```
+
+The default saver supports values accepted by the platform save registry. `Form` keeps its default
+state in memory because `Field<T>` can contain any non-null type. For custom field values, pass a
+complete `Saver<FormState, out Any>`. You can also use `FormState.saver(valuesSaver)` to provide a
+saver for the complete `Map<String, Any>` of field names and values while Ikokuko saves the remaining
+form state.
+
 #### shouldShowErrors
-Controls when validation errors are globally visible.
+Controls whether stored errors can be displayed for dirty fields. A pristine field does not display
+its error until it becomes dirty. `submit()` marks all initialized fields as dirty.
+
 |Value|Behaviour|Typical Use Case|
 |---|---|---|
-|`false` (default)|Validation runs continuously, but errors are hidden until submit() or manual toggle.|Most common — errors appear only after first submit.|
-|`true`|Errors become visible once a field value changes (becomes dirty) or after submit.|Used when you want validation messages to show immediately upon interaction.|
+|`false` (default)|Validation runs continuously, but dirty-field errors remain hidden and `FormState.isValid` remains `true`.|Use when errors must first affect the UI after `submit()` or a manual toggle.|
+|`true`|Stored errors affect `FormState.isValid` and are visible for dirty fields. Pristine-field errors remain hidden.|Use when validation must affect the UI as fields change.|
 
 You can toggle this flag at any time from either the FormState or inside the FormScope.
 ```kotlin
 // From FormState
-formState.shouldShowErrors = true // Show all validation errors
+formState.shouldShowErrors = true // Permit dirty-field errors
 formState.shouldShowErrors = false // Hide errors again
 
 // From FormScope
 Form(onSubmit = {}) {
     // ...
-    shouldShowErrors = true // Show all validation errors
+    shouldShowErrors = true // Permit dirty-field errors
     shouldShowErrors = false // Hide errors again
 }
 ```
@@ -129,6 +147,7 @@ fun DemoForm() {
 
 #### How fields work
 - `Field` instances are identified by their name, not by object identity.
+- `Field<T>` requires a non-null `T`. Use an explicit value such as an empty string or list to represent no input.
 - You can safely recreate them on each composition — their state in the form will persist as long as the name stays the same.
 - `Field` objects are cheap to construct; there’s no need to remember them unless you prefer stable references.
 
@@ -136,11 +155,12 @@ fun DemoForm() {
 |Case|Behaviour|
 |---|---|
 |Same name, same type|Fields share the same value in the FormState. Updating one updates them all.|
-|Same name, different type|Causes a crash when FormScope tries to cast the stored value back to the wrong type.|
+|Same name, different type|Fields share one map entry because generic types do not affect field equality. Reading the entry through the wrong type can cause a runtime cast error.|
 |Different names|Fields maintain independent values and validation states.|
 
 #### Recommended
-> Always ensure that all form fields have unique names within a single `FormScope`.
+> Each field name must be unique within a `FormScope`. `ValidationEffect` does not check for
+> duplicate names because it cannot distinguish a recreated logical field from a second declaration.
 
 ---
 
@@ -148,22 +168,24 @@ fun DemoForm() {
 
 You can connect fields to your FormState and enable validation in two ways:
 
+Use one `ValidationEffect` or `FormField` for each field in a form.
+
 - **Manual setup** — call [ValidationEffect](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt) directly to register and validate a field.
 ```kotlin
 Form(onSubmit={ println("Email: ${EmailField.value}") }) {
     ValidationEffect(
         field = EmailField,
-        default = "",
+        initialValue = "",
         validators = listOf(
             RequiredValidator("Email required"),
-            EmailValidator("Invalid email")
+            MatchPatternValidator("Invalid email", "[^@\\s]+@[^@\\s]+\\.[^@\\s]+")
         )
     )
     OutlinedTextField(
         value = EmailField.value,
-        isError = !EmailField.isValid,
+        isError = EmailField.shouldDisplayError,
         label = { Text("Email") },
-        supportingText = EmailField.error?.let {
+        supportingText = EmailField.error.takeIf { EmailField.shouldDisplayError }?.let {
             { Text(it, color = MaterialTheme.colorScheme.error) }
         },
         onValueChange = { EmailField.value = it }
@@ -174,17 +196,17 @@ Form(onSubmit={ println("Email: ${EmailField.value}") }) {
 ```kotlin
 FormField(
     field = EmailField,
-    default = "",
+    initialValue = "",
     validators = listOf(
         RequiredValidator("Email required"),
-        EmailValidator("Invalid email")
+        MatchPatternValidator("Invalid email", "[^@\\s]+@[^@\\s]+\\.[^@\\s]+")
     )
 ) {
     OutlinedTextField(
         value = EmailField.value,
-        isError = !EmailField.isValid,
+        isError = EmailField.shouldDisplayError,
         label = { Text("Email") },
-        supportingText = EmailField.error?.let {
+        supportingText = EmailField.error.takeIf { EmailField.shouldDisplayError }?.let {
             { Text(it, color = MaterialTheme.colorScheme.error) }
         },
         onValueChange = { EmailField.value = it }
@@ -196,7 +218,7 @@ FormField(
 
 ### 5. Overriding Errors Manually
 
-Each `Field` exposes an `error` property that represents its current validation error message, and it can be set or cleared manually at any time.
+Each `Field` exposes a raw `error` property that represents its current validation error message. It can be set or cleared manually at any time. Use `shouldDisplayError` to decide whether to render it.
 
 ```kotlin
 var Field<*>.error: String?
@@ -245,7 +267,7 @@ fun FormScope.TextInput(
         Column(modifier = modifier) {
             OutlinedTextField(
                 value = field.value,
-                isError = !field.isValid,
+                isError = field.shouldDisplayError,
                 label = { Text(label) },
                 placeholder = {
                     Text(
@@ -253,7 +275,7 @@ fun FormScope.TextInput(
                         color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
                     )
                 },
-                supportingText = field.error?.let { { Text(it) } },
+                supportingText = field.error.takeIf { field.shouldDisplayError }?.let { { Text(it) } },
                 onValueChange = { field.value = it },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -266,8 +288,9 @@ fun FormScope.TextInput(
 #### How it works
 - `ValidationEffect` attaches validators and ensures the field’s value and errors stay reactive.
 - `field.value` binds the text input to the form state.
-- `field.error` provides the active error message when visible.
-- `field.isValid` drives the error styling (isError = !field.isValid).
+- `field.error` provides the raw active error message.
+- `field.isValid` reports strict validation state.
+- `field.shouldDisplayError` drives error styling and message visibility.
 
 All form logic is encapsulated inside the FormScope, so the field automatically integrates with `submit()`, `reset()`, and global validation visibility.
 
@@ -285,7 +308,7 @@ each input is already wired to its corresponding Field and validation logic.
 ```kotlin
 val EmailField = Field.Text("email")
 val PasswordField = Field.Text("password")
-val ConfirmPasswordField = Field.Text("password")
+val ConfirmPasswordField = Field.Text("confirm_password")
 
 @Composable
 fun SignUpForm() {
@@ -302,7 +325,7 @@ fun SignUpForm() {
                 label = "Email",
                 validators = listOf(
                     RequiredValidator("Email required"),
-                    EmailValidator("Invalid email")
+                    MatchPatternValidator("Invalid email", "[^@\\s]+@[^@\\s]+\\.[^@\\s]+")
                 )
             )
             TextInput(
@@ -315,13 +338,13 @@ fun SignUpForm() {
             )
 
             // Cross-field validation
-            // The EqualsValidator references PasswordField.value to ensure both match.
+            // FieldEqualsValidator declares PasswordField as a dependency.
             TextInput(
                 field = ConfirmPasswordField,
                 label = "Password Confirmation",
                 validators = listOf(
                     RequiredValidator("password confirmation is required"),
-                    EqualsValidator("passwords must match") { PasswordField.value }
+                    FieldEqualsValidator("passwords must match", PasswordField)
                 )
             )
             Button(onClick = ::submit, enabled = isValid) {
@@ -336,8 +359,10 @@ fun SignUpForm() {
 - Uses the `TextInput` reusable component defined in the previous section.
 - `FormState` tracks and validates all registered fields automatically.
 - The `onSubmit` callback executes only when all validations pass.
-- Cross-field validation allows validators to reference other field values dynamically (e.g., matching fields or dependent ranges).
-- The `isValid` property enables you to toggle UI elements like buttons based on current form validity.
+- Cross-field validators declare the fields they read. A dependency value change revalidates the target field.
+- The form `isValid` property remains `true` until error reporting is enabled. After the first
+  `submit()`, stored errors can disable UI elements such as this button.
+- `submit()` uses the latest completed reactive validation cycle. Do not assign a field value and call `submit()` synchronously in the same callback.
 ---
 
 ### 8. Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
@@ -360,43 +385,37 @@ fun SignUpForm() {
 #### Pattern
 | Validator | Description |
 |------------|--------------|
-| `MatchPatternValidator` | Entire string matches regex |
-| `ContainsPatternValidator` | Regex occurs anywhere |
-| `EmailValidator` | Standard email format |
-| `PhoneNumberValidator` | E.164 phone format |
+| `MatchPatternValidator` | Entire string matches a pattern string |
+| `ContainsPatternValidator` | Pattern string occurs anywhere |
 
-#### Equality
-| Validator        | Description |
-|------------------|-------------|
-| `InValidator`    | Value must be in the allowed set |
-| `NotInValidator` | Value must not be in the disallowed set |
-
-#### Membership
+#### Equality and membership
 | Validator | Description |
 |------------|-------------|
-| `EqualsValidator` | Must equal expected value |
-| `NotEqualsValidator` | Must differ from unwanted value |
+| `FieldEqualsValidator` | Must equal another field value |
+| `InValidator` | Value must be in the allowed set |
+| `NotInValidator` | Value must not be in the disallowed set |
 
 #### Selection / Lists
 | Validator | Description |
 |------------|-------------|
-| `NonEmptySelectionValidator` | Selection not empty |
-| `MinSelectionValidator` | At least N items |
-| `MaxSelectionValidator` | At most N items |
-| `ExactSelectionValidator` | Exactly N items |
-| `SelectionRangeValidator` | Between min and max items |
+| `SelectionRangeValidator` | Minimum and optional maximum item count |
 | `SelectionInValidator` | Ensures all selected values are within the allowed options |
+
+#### Boolean
+| Validator | Description |
+|------------|-------------|
+| `CheckedValidator` | Must be `true` |
 
 #### Custom Validators
 
 Implement the `Validator<T>` interface:
 
 ```kotlin
-class StartsWithValidator(
+data class StartsWithValidator(
     override val errorMessage: String,
     private val prefix: String
 ) : Validator<String> {
-    override fun validate(value: String) = value.startsWith(prefix)
+    override fun ValidationScope.validate(value: String) = value.startsWith(prefix)
 }
 ```
 Use it normally:
@@ -404,14 +423,67 @@ Use it normally:
 ```kotlin
 ValidationEffect(
     field = UsernameField,
-    default = "",
+    initialValue = "",
     validators = listOf(StartsWithValidator("Must start with @", "@"))
 )
 ```
 
+`ValidationEffect` uses the validator list as an effect key. Built-in validators are data
+classes so an equivalent inline validator remains equal across recompositions. This prevents
+validation from restarting when no validation rule changed.
+
+Custom validators used inline should also have structural equality. A data class is the
+simplest option. Avoid lambda-backed validators. A new lambda normally has a new identity on
+each recomposition, even when it has the same behavior. This can restart validation and replace
+an external error without a field or dependency value change.
+
+If a custom validator must contain a lambda, remember the validator instance:
+
+```kotlin
+val validator = remember {
+    CustomValidator("Invalid value") { value -> checkValue(value) }
+}
+```
+
+Declare every field read during validation in `dependencies`.
+
 ---
 
-## Demo - [Sample App](/composeApp)
+## Migrating from 0.1.0
+
+- Change nullable field types to non-null types. `Field<T>` now requires `T : Any`.
+- Remove field destructuring and replace the removed `Field.Int`, `Field.Long`, and `Field.Double`
+  factories with the generic `Field<T>(name)` constructor when required.
+- Give each field a unique name within its `FormScope`. Same-name fields share one stored value.
+- Rename the `default` argument of `ValidationEffect` and `FormField` to `initialValue`.
+- Replace `field.markAsDirty()` with `field.isDirty = true`. The `isDirty` property is now writable.
+- Remove explicit `null` arguments from `submit(onInvalid)`. Its fallback is now a non-null no-op
+  callback.
+- Use `field.shouldDisplayError` for rendering. `field.error` and `field.isValid` expose strict
+  stored field state. `FormState.isValid` ignores stored errors until error reporting is enabled.
+- Update custom validators to implement `fun ValidationScope.validate(value: T)`. Declare each
+  field read by validation in `dependencies`.
+- Use stable structural equality for inline custom validators. Prefer data classes, and remember
+  validators that contain lambdas.
+- Replace numeric transform lambdas with the string-backed integer `MinValidator`, `MaxValidator`,
+  and `RangeValidator` constructors. These validators parse values with `toIntOrNull()`.
+- Pass pattern strings instead of `Regex` objects to `MatchPatternValidator` and
+  `ContainsPatternValidator`.
+- Replace `EmailValidator` and `PhoneNumberValidator` with `MatchPatternValidator` and an
+  application-owned pattern.
+- Replace `EqualsValidator` with `FieldEqualsValidator` for field comparison. Implement fixed-value
+  equality, inequality, and other uncommon rules as custom validators.
+- Replace `NonEmptySelectionValidator`, `MinSelectionValidator`, `MaxSelectionValidator`, and
+  `ExactSelectionValidator` with `SelectionRangeValidator`. Its `max` argument can be `null` for an
+  unbounded maximum.
+- Use `CheckedValidator` for required Boolean fields. Use `InValidator`, `NotInValidator`, and
+  `SelectionInValidator` for membership rules.
+- Account for reset behavior. `reset()` now clears values, errors, dirty state, and error visibility,
+  then revalidates initialized effects.
+
+---
+
+## Demo - [Sample App](/samples/composeApp)
 
 See **Ikokuko** — the reactive, type-safe form validation library for Compose Multiplatform (Android & iOS) — in action:
 

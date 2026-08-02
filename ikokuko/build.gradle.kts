@@ -11,8 +11,8 @@ plugins {
     alias(libs.plugins.vanniktechMavenPublish)
 }
 
-group = "com.quantipixels"
-version = findProperty("versionName") ?: "0.0.0-SNAPSHOT"
+group = providers.gradleProperty("GROUP").get()
+version = providers.gradleProperty("VERSION_NAME").get()
 
 kotlin {
     androidTarget {
@@ -37,9 +37,11 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
+            api(libs.compose.runtime.saveable)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
@@ -47,15 +49,15 @@ kotlin {
 android {
     namespace = "com.quantipixels"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
 }
 
 mavenPublishing {
-    publishToMavenCentral(
-        automaticRelease = true,
-        validateDeployment = true
-    )
+    publishToMavenCentral(automaticRelease = true)
     signAllPublications()
 }

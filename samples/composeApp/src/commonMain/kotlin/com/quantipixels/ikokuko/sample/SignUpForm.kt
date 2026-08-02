@@ -17,15 +17,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.quantipixels.ikokuko.CheckedValidator
 import com.quantipixels.ikokuko.ContainsPatternValidator
-import com.quantipixels.ikokuko.EmailValidator
-import com.quantipixels.ikokuko.EqualsValidator
-import com.quantipixels.ikokuko.ExactSelectionValidator
 import com.quantipixels.ikokuko.Field
+import com.quantipixels.ikokuko.FieldEqualsValidator
 import com.quantipixels.ikokuko.Form
+import com.quantipixels.ikokuko.MatchPatternValidator
 import com.quantipixels.ikokuko.MinLengthValidator
-import com.quantipixels.ikokuko.PhoneNumberValidator
 import com.quantipixels.ikokuko.RequiredValidator
+import com.quantipixels.ikokuko.SelectionRangeValidator
 
 data class SignUpData(
     val phoneNumber: String,
@@ -45,10 +45,12 @@ private val CapacityField = Field.Text("capacity")
 private val ProjectsField = Field.List<Project>("projects")
 private val TermsField = Field.Boolean("terms")
 
-private val SymbolRegex = Regex("[^A-Za-z0-9 ]")
-private val DigitRegex = Regex("\\d")
-private val UppercaseRegex = Regex("[A-Z]")
-private val LowercaseRegex = Regex("[a-z]")
+private const val SymbolPattern = "[^A-Za-z0-9 ]"
+private const val DigitPattern = "\\d"
+private const val UppercasePattern = "[A-Z]"
+private const val LowercasePattern = "[a-z]"
+private const val EmailPattern = "[^@\\s]+@[^@\\s]+\\.[^@\\s]+"
+private const val PhoneNumberPattern = "\\+[1-9]\\d{1,14}"
 
 enum class Capacity {
     Personal, Professional
@@ -89,7 +91,7 @@ fun SignUpForm(
                 placeholder = "+353 85 616 4829",
                 validators = listOf(
                     RequiredValidator("phone number is required"),
-                    PhoneNumberValidator("must be a valid phone number")
+                    MatchPatternValidator("must be a valid phone number", PhoneNumberPattern)
                 )
             )
             TextInput(
@@ -98,7 +100,7 @@ fun SignUpForm(
                 placeholder = "sample@ikokuko.dev",
                 validators = listOf(
                     RequiredValidator("email is required"),
-                    EmailValidator("must be a valid email address")
+                    MatchPatternValidator("must be a valid email address", EmailPattern)
                 )
             )
             TextInput(
@@ -108,10 +110,10 @@ fun SignUpForm(
                 validators = listOf(
                     RequiredValidator("password is required"),
                     MinLengthValidator("must be at least 8 characters", 8),
-                    ContainsPatternValidator("must contain an uppercase character", UppercaseRegex),
-                    ContainsPatternValidator("must contain a lowercase character", LowercaseRegex),
-                    ContainsPatternValidator("must contain a digit", DigitRegex),
-                    ContainsPatternValidator("must contain a symbol", SymbolRegex)
+                    ContainsPatternValidator("must contain an uppercase character", UppercasePattern),
+                    ContainsPatternValidator("must contain a lowercase character", LowercasePattern),
+                    ContainsPatternValidator("must contain a digit", DigitPattern),
+                    ContainsPatternValidator("must contain a symbol", SymbolPattern)
                 ),
                 trailingIcon = {
                     PasswordVisibilityToggle(
@@ -126,7 +128,7 @@ fun SignUpForm(
                 isPassword = confirmationHidden,
                 validators = listOf(
                     RequiredValidator("password confirmation is required"),
-                    EqualsValidator("passwords must match") { PasswordField.value }
+                    FieldEqualsValidator("passwords must match", PasswordField)
                 ),
                 trailingIcon = {
                     PasswordVisibilityToggle(
@@ -145,13 +147,19 @@ fun SignUpForm(
                 field = ProjectsField,
                 label = "What type of projects do you intend to use this library for?",
                 items = Project.entries,
-                validators = listOf(ExactSelectionValidator("you must select 2 options", 2))
+                validators = listOf(
+                    SelectionRangeValidator(
+                        errorMessage = "you must select 2 options",
+                        min = 2,
+                        max = 2
+                    )
+                )
             )
             CheckBox(
                 field = TermsField,
                 label = "I agree to the Terms & Conditions",
                 validators = listOf(
-                    EqualsValidator("you must agree with the terms & conditions") { true }
+                    CheckedValidator("you must agree with the terms & conditions")
                 )
             )
             Spacer(Modifier.height(8.dp))

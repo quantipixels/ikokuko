@@ -84,8 +84,12 @@ class FormScope internal constructor(
      * Validation runs reactively; this action uses its latest completed result. Do not change a
      * field value and submit in the same callback, before reactive validation has processed it.
      * Calls [onSubmit] when no stored errors remain, otherwise [onInvalid].
+     * Both callbacks receive this form's scope so reusable handlers can inspect fields and errors.
      */
-    fun submit(onInvalid: () -> Unit = {}, onSubmit: FormScope.() -> Unit) {
+    fun submit(
+        onInvalid: FormScope.() -> Unit = {},
+        onSubmit: FormScope.() -> Unit
+    ) {
         fields.forEach { it.isDirty = true }
         state.isErrorReportingEnabled = true
         if (state.isValid) onSubmit() else onInvalid()
@@ -110,7 +114,7 @@ private class StateValidationScope(
 fun <T : Any> FormScope.ValidationEffect(
     field: Field<T>,
     initialValue: T,
-    validators: List<Validator<T>>
+    validators: List<Validator<T>> = emptyList()
 ) {
     if (!field.isInitialized) state.values[field] = initialValue
 

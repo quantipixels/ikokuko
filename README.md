@@ -177,6 +177,7 @@ fun DemoForm() {
 You can connect fields to your FormState and enable validation in two ways:
 
 Use one `ValidationEffect` or `FormField` for each field in a form.
+Both default `validators` to an empty list, so fields without rules can omit that argument.
 
 - **Manual setup** — call [ValidationEffect](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt) directly to register and validate a field.
 ```kotlin
@@ -498,6 +499,8 @@ Declare every field read during validation in `dependencies`.
 - Remove `onSubmit` from `Form`; it now accepts only `state` and `content`.
 - Supply success at the action: `submit { sendCurrentValues() }`, or
   `submit(onInvalid = { showSummary() }) { sendCurrentValues() }`.
+- Both callbacks have a `FormScope` receiver. Reusable handlers can read fields and errors directly;
+  wrap existing zero-argument handler variables as `onInvalid = { handler() }`.
 - **Old `submit { ... }` trailing lambdas meant `onInvalid`. They now mean successful submission.**
   Move old invalid handlers to the named `onInvalid` argument and add a success lambda.
 - Replace `onClick = ::submit` with `onClick = { submit { /* success */ } }`.

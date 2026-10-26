@@ -87,16 +87,20 @@ class FormStateTest {
         var submitted = false
         var invalid = false
         val scope = FormScope(state)
+        val onInvalid: FormScope.() -> Unit = {
+            invalid = true
+            assertTrue(isErrorReportingEnabled)
+            assertTrue(field.shouldDisplayError)
+        }
         state.values[field] = ""
 
         with(scope) {
             field.error = "required"
-            submit(onInvalid = { invalid = true }) { submitted = true }
+            submit(onInvalid = onInvalid) { submitted = true }
 
             assertFalse(submitted)
             assertTrue(invalid)
             assertTrue(field.isDirty)
-            assertTrue(field.shouldDisplayError)
 
             field.error = null
             submit { submitted = true }

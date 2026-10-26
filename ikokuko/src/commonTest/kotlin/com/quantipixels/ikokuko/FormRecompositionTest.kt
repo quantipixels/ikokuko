@@ -304,7 +304,7 @@ class FormRecompositionTest {
 
             setContent {
                 Form(state = state) {
-                    ValidationEffect(field, initialValue = initialValue, validators = emptyList())
+                    ValidationEffect(field, initialValue = initialValue)
                     SideEffect { formScope = this }
                 }
             }

@@ -56,6 +56,8 @@ fun App() {
             }
             Spacer(Modifier.height(24.dp))
             SignUpForm(onSubmit = { signUpData = it })
+            HorizontalDivider()
+            BackendErrorExample()
         }
 
         signUpData?.let { data ->

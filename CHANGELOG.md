@@ -4,6 +4,14 @@ All notable changes to Ikokuko are recorded in this file.
 
 ## [Unreleased]
 
+- Remove `onSubmit` from `Form` and require it at `submit(onInvalid = {}) { ... }`.
+  Old submit trailing lambdas handled invalid input; migrate them to named `onInvalid`.
+- Flush pending validation synchronously on submit against one value snapshot. Preserve external
+  errors for unchanged inputs and propagate validator exceptions before applying submit changes.
+- Clarify reset, field lifetime, and validator registration timing.
+- Add sample backend-rejection handling with stale-response checks and consumed-response acknowledgment.
+- Add multiline sample inputs with caller-owned counters and UTF-16 length validation, without truncation.
+
 ## [0.2.0] - 2026-08-02
 
 - Add strict field validation state and `Field.shouldDisplayError`.

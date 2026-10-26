@@ -1,0 +1,92 @@
+name: Published artifact verification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apple-consumer:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: iosSimulatorArm64
+          - runner: macos-15-intel
+            target: iosX64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Verify on an owned simulator clone
+        run: python3 verification/apple-ci.py ${{ matrix.target }}
+      - name: Preserve publication and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ikokuko-${{ matrix.target }}-publication-evidence
+          path: |
+            build/verification/*/*.log
+            build/verification/*/*.json
+            build/verification/*/maven/staged-files.sha256
+            build/verification/*/consumer-build/reports/
+            build/verification/*/consumer-build/test-results/
+          if-no-files-found: warn
+
+  android-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Install the pinned Android test platform
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "system-images;android-35;google_apis;x86_64"
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name publication-verification --package "system-images;android-35;google_apis;x86_64"
+      - name: Run the packaged Android fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/verification
+          if [[ -e /dev/kvm ]]; then sudo chmod a+rw /dev/kvm; fi
+          "$ANDROID_HOME/emulator/emulator" -avd publication-verification -port 5580 -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > build/verification/emulator.log 2>&1 &
+          emulator_pid=$!
+          trap '"$ANDROID_HOME/platform-tools/adb" -s emulator-5580 emu kill || true; wait "$emulator_pid" || true' EXIT
+          timeout 180 "$ANDROID_HOME/platform-tools/adb" -s emulator-5580 wait-for-device
+          booted=false
+          for attempt in {1..90}; do
+            if [[ "$("$ANDROID_HOME/platform-tools/adb" -s emulator-5580 shell getprop sys.boot_completed | tr -d '\r')" == 1 ]]; then booted=true; break; fi
+            sleep 2
+          done
+          [[ "$booted" == true ]]
+          python3 tooling/verify-publication.py --platform android-device --android-serial emulator-5580
+      - name: Preserve publication and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ikokuko-android-publication-evidence
+          path: |
+            build/verification/emulator.log
+            build/verification/*/*.log
+            build/verification/*/*.json
+            build/verification/*/maven/staged-files.sha256
+            build/verification/*/consumer-build/reports/
+            build/verification/*/consumer-build/test-results/
+            build/verification/*/consumer-build/outputs/androidTest-results/
+          if-no-files-found: warn

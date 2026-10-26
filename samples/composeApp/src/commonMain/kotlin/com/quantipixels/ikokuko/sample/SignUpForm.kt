@@ -65,22 +65,7 @@ fun SignUpForm(
     onSubmit: (SignUpData) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Form(
-        onSubmit = {
-            onSubmit(
-                SignUpData(
-                    PhoneNumberField.value,
-                    EmailField.value,
-                    PasswordField.value,
-                    ConfirmPasswordField.value,
-                    enumValueOf<Capacity>(CapacityField.value),
-                    ProjectsField.value,
-                    TermsField.value
-                )
-            )
-            reset()
-        }
-    ) {
+    Form {
         var passwordHidden by remember { mutableStateOf(true) }
         var confirmationHidden by remember { mutableStateOf(true) }
 
@@ -169,7 +154,22 @@ fun SignUpForm(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = ::submit,
+                    onClick = {
+                        submit {
+                            onSubmit(
+                                SignUpData(
+                                    PhoneNumberField.value,
+                                    EmailField.value,
+                                    PasswordField.value,
+                                    ConfirmPasswordField.value,
+                                    enumValueOf<Capacity>(CapacityField.value),
+                                    ProjectsField.value,
+                                    TermsField.value
+                                )
+                            )
+                            reset()
+                        }
+                    },
                     enabled = isValid,
                     modifier = Modifier.weight(1f)
                 ) {

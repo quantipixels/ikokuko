@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -10,4 +12,11 @@ plugins {
     alias(libs.plugins.androidKotlinMultiplatformLibrary) apply false
     alias(libs.plugins.androidLint) apply false
     alias(libs.plugins.vanniktechMavenPublish) apply false
+}
+
+// PR verification supplies its own disposable simulator; release defaults stay unchanged.
+allprojects {
+    tasks.withType<KotlinNativeSimulatorTest>().configureEach {
+        providers.gradleProperty("verificationIosDevice").orNull?.let { device.set(it) }
+    }
 }

@@ -35,7 +35,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     ValidationEffect(
                         field = field,
                         initialValue = "",
@@ -68,7 +68,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     val currentRecomposition = recompositionTrigger
 
                     ValidationEffect(
@@ -118,7 +118,7 @@ class FormRecompositionTest {
             lateinit var currentScope: FormScope
 
             setContent {
-                Form(state = currentState, onSubmit = {}) {
+                Form(state = currentState) {
                     ValidationEffect(
                         field = field,
                         initialValue = "",
@@ -152,7 +152,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(password, initialValue = "same", validators = emptyList())
                 ValidationEffect(
                     confirmation,
@@ -187,7 +187,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(
                     confirmation,
                     initialValue = "confirmation",
@@ -236,7 +236,7 @@ class FormRecompositionTest {
             }
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     ValidationEffect(
                         combined,
                         initialValue = "AB",
@@ -303,7 +303,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(state = state, onSubmit = {}) {
+                Form(state = state) {
                     ValidationEffect(field, initialValue = initialValue, validators = emptyList())
                     SideEffect { formScope = this }
                 }
@@ -343,7 +343,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(
                     field,
                     initialValue = "",
@@ -377,7 +377,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(
                     field,
                     initialValue = "",
@@ -411,7 +411,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     if (showField) {
                         ValidationEffect(
                             field,
@@ -472,13 +472,359 @@ class FormRecompositionTest {
         }
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(field, initialValue = "value", validators = listOf(validator))
             }
         }
         waitForIdle()
 
         runOnIdle { assertEquals(false, receiverWasFormScope) }
+    }
+
+    @Test
+    fun same_callback_edit_is_validated_before_submit() = runCompositionTest {
+        val field = Field.Text("immediate")
+        lateinit var scope: FormScope
+        var submitted = 0
+        var invalid = 0
+        setContent {
+            Form {
+                ValidationEffect(field, "valid", listOf(RequiredValidator(VALIDATION_ERROR)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                field.value = ""
+                submit(onInvalid = { invalid++ }) { submitted++ }
+                assertEquals(VALIDATION_ERROR, field.error)
+                assertEquals(0, submitted)
+                assertEquals(1, invalid)
+            }
+        }
+    }
+
+    @Test
+    fun same_callback_correction_submits_and_queued_effect_preserves_new_rejection() = runCompositionTest {
+        val field = Field.Text("email")
+        lateinit var scope: FormScope
+        var submitted = 0
+        setContent {
+            Form {
+                ValidationEffect(field, "", listOf(RequiredValidator(VALIDATION_ERROR)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                field.value = "corrected"
+                submit {
+                    submitted++
+                    field.error = EXTERNAL_ERROR
+                }
+                assertEquals(1, submitted)
+            }
+        }
+        waitForIdle()
+        runOnIdle { with(scope) { assertEquals(EXTERNAL_ERROR, field.error) } }
+    }
+
+    @Test
+    fun unchanged_external_error_blocks_but_changed_input_replaces_it() = runCompositionTest {
+        val field = Field.Text("email")
+        lateinit var scope: FormScope
+        var submitted = 0
+        var invalid = 0
+        setContent {
+            Form {
+                ValidationEffect(field, "valid", listOf(RequiredValidator(VALIDATION_ERROR)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                field.error = EXTERNAL_ERROR
+                submit(onInvalid = { invalid++ }) { submitted++ }
+                assertEquals(EXTERNAL_ERROR, field.error)
+                assertEquals(1, invalid)
+                assertEquals(0, submitted)
+                field.value = "changed"
+                submit(onInvalid = { invalid++ }) { submitted++ }
+                assertNull(field.error)
+                assertEquals(1, invalid)
+                assertEquals(1, submitted)
+            }
+        }
+    }
+
+    @Test
+    fun same_callback_dependency_edits_use_one_current_snapshot() = runCompositionTest {
+        val first = Field.Text("first")
+        val second = Field.Text("second")
+        lateinit var scope: FormScope
+        var submitted = 0
+        setContent {
+            Form {
+                ValidationEffect(first, "old", listOf(FieldEqualsValidator(MISMATCH_ERROR, second)))
+                ValidationEffect(second, "old", listOf(FieldEqualsValidator(MISMATCH_ERROR, first)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                first.value = "new"
+                second.value = "new"
+                submit { submitted++ }
+                assertNull(first.error)
+                assertNull(second.error)
+                assertEquals(1, submitted)
+                first.value = "different"
+                submit(onInvalid = { submitted-- }) { error("Must be invalid") }
+                assertEquals(MISMATCH_ERROR, first.error)
+                assertEquals(MISMATCH_ERROR, second.error)
+                assertEquals(0, submitted)
+            }
+        }
+    }
+
+    @Test
+    fun thrown_validator_does_not_partially_commit_pending_errors_or_submit_flags() = runCompositionTest {
+        val first = Field.Text("first")
+        val second = Field.Text("second")
+        lateinit var scope: FormScope
+        var callbacks = 0
+        val throwing = object : Validator<String> {
+            override val errorMessage = "unused"
+            override fun ValidationScope.validate(value: String): Boolean {
+                if (value == "throw") error("Validator failed")
+                return true
+            }
+        }
+        setContent {
+            Form {
+                ValidationEffect(first, "valid", listOf(RequiredValidator(VALIDATION_ERROR)))
+                ValidationEffect(second, "valid", listOf(throwing))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                first.error = EXTERNAL_ERROR
+                first.value = ""
+                second.value = "throw"
+                first.isDirty = false
+                second.isDirty = false
+                kotlin.test.assertFailsWith<IllegalStateException> {
+                    submit(onInvalid = { callbacks++ }) {
+                        callbacks++
+                    }
+                }
+                assertEquals(0, callbacks)
+                assertEquals(EXTERNAL_ERROR, first.error)
+                assertNull(second.error)
+                assertFalse(first.isDirty)
+                assertFalse(second.isDirty)
+                assertFalse(shouldShowErrors)
+                // Restore before the queued reactive effect runs.
+                second.value = "valid"
+            }
+        }
+    }
+
+    @Test
+    fun submit_after_reset_before_recomposition_skips_uninitialized_fields() = runCompositionTest {
+        val field = Field.Text("required")
+        lateinit var scope: FormScope
+        var initial by mutableStateOf("old")
+        var submitted = 0
+        setContent {
+            Form {
+                ValidationEffect(field, initial, listOf(RequiredValidator(VALIDATION_ERROR)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                initial = "current"
+                reset()
+                submit { submitted++ }
+                assertEquals(1, submitted)
+                assertTrue(fields.isEmpty())
+                assertFalse(field.isDirty)
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                assertEquals("current", field.value)
+                assertFalse(field.isDirty)
+            }
+        }
+    }
+
+    @Test
+    fun removed_effect_is_not_flushed_and_replaced_state_owns_its_validation() = runCompositionTest {
+        val field = Field.Text("conditional")
+        var visible by mutableStateOf(true)
+        var state by mutableStateOf(FormState())
+        lateinit var scope: FormScope
+        setContent {
+            Form(state) {
+                if (visible) ValidationEffect(field, "", listOf(RequiredValidator(VALIDATION_ERROR)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        val oldScope = scope
+        runOnIdle {
+            with(scope) { field.isDirty = true }
+            visible = false
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                submit { assertEquals("", field.value) }
+                assertNull(field.error)
+                assertTrue(field.isDirty)
+            }
+            visible = true
+            state = FormState()
+        }
+        waitForIdle()
+        runOnIdle {
+            with(oldScope) { submit { assertNull(field.error) } }
+            with(scope) {
+                submit(onInvalid = {}) { error("New state must be invalid") }
+                assertEquals(VALIDATION_ERROR, field.error)
+            }
+        }
+    }
+
+    @Test
+    fun missing_dependency_is_skipped_during_submit_and_success_may_reset() = runCompositionTest {
+        val field = Field.Text("confirmation")
+        val absent = Field.Text("absent")
+        lateinit var scope: FormScope
+        setContent {
+            Form {
+                ValidationEffect(field, "old", listOf(FieldEqualsValidator(MISMATCH_ERROR, absent)))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                field.value = "changed"
+                submit {
+                    assertNull(field.error)
+                    reset()
+                }
+                assertTrue(fields.isEmpty())
+                assertFalse(shouldShowErrors)
+            }
+        }
+    }
+
+    @Test
+    fun disposing_a_duplicate_declaration_does_not_remove_the_other_registration() = runCompositionTest {
+        val field = Field.Text("shared")
+        var showFirst by mutableStateOf(true)
+        lateinit var scope: FormScope
+        setContent {
+            Form {
+                if (showFirst) {
+                    androidx.compose.runtime.key("first") {
+                        ValidationEffect(field, "valid", emptyList())
+                    }
+                }
+                androidx.compose.runtime.key("second") {
+                    ValidationEffect(field, "valid", listOf(RequiredValidator(VALIDATION_ERROR)))
+                }
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) { field.error = EXTERNAL_ERROR }
+            showFirst = false
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                assertEquals(EXTERNAL_ERROR, field.error)
+                field.value = ""
+                submit(onInvalid = {}) { error("Remaining registration must validate") }
+                assertEquals(VALIDATION_ERROR, field.error)
+            }
+        }
+    }
+
+    @Test
+    fun submit_before_recomposition_uses_registered_validators_then_replacement_revalidates() = runCompositionTest {
+        val field = Field.Text("rules")
+        var validators by mutableStateOf<List<Validator<String>>>(emptyList())
+        lateinit var scope: FormScope
+        var submitted = 0
+        setContent {
+            Form {
+                ValidationEffect(field, "", validators)
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            validators = listOf(RequiredValidator(VALIDATION_ERROR))
+            with(scope) {
+                submit { submitted++ }
+                assertEquals(1, submitted)
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                submit(onInvalid = {}) { error("Replaced validators must block") }
+                assertEquals(VALIDATION_ERROR, field.error)
+            }
+        }
+    }
+
+    @Test
+    fun pending_results_are_computed_before_any_error_is_applied() = runCompositionTest {
+        val first = Field.Text("first")
+        val second = Field.Text("second")
+        lateinit var scope: FormScope
+        var observedError: String? = null
+        val observesFirst = object : Validator<String> {
+            override val errorMessage = "unused"
+            override fun ValidationScope.validate(value: String): Boolean {
+                observedError = with(scope) { first.error }
+                return true
+            }
+        }
+        setContent {
+            Form {
+                ValidationEffect(first, "valid", listOf(RequiredValidator(VALIDATION_ERROR)))
+                ValidationEffect(second, "valid", listOf(observesFirst))
+                SideEffect { scope = this }
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            with(scope) {
+                first.error = EXTERNAL_ERROR
+                first.value = ""
+                second.value = "changed"
+                submit(onInvalid = {}) { error("Required field must block") }
+                assertEquals(EXTERNAL_ERROR, observedError)
+                assertEquals(VALIDATION_ERROR, first.error)
+            }
+        }
     }
 
     private fun runCompositionTest(

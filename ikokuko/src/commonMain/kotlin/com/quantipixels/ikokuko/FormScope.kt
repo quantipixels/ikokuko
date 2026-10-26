@@ -3,17 +3,16 @@ package com.quantipixels.ikokuko
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 
 /**
  * Provides typed field data and form actions inside a [Form] composition.
  */
 @Suppress("UNCHECKED_CAST")
 class FormScope internal constructor(
-    internal val state: FormState,
-    private val onSubmit: FormScope.() -> Unit
+    internal val state: FormState
 ) {
-    internal val validationScope: ValidationScope = StateValidationScope(this)
-
     /** All initialized fields in this form. */
     val fields: Set<Field<*>>
         get() = state.values.keys
@@ -81,29 +80,36 @@ class FormScope internal constructor(
         }
 
     /**
-     * Marks all initialized fields as dirty and enables error display.
-     * Calls the form submit callback only when the form is valid.
+     * Flushes pending validation against one value snapshot, then marks initialized fields dirty
+     * and enables error display. Calls exactly one of [onSubmit] or [onInvalid].
+     *
+     * Unchanged validation inputs retain manual errors. Value and dependency edits in the same
+     * callback are included; validators use the currently registered list until recomposition.
+     * A validator exception propagates before errors, dirty flags or callbacks are changed here.
+     * Callbacks run after validation commits and may reset or resubmit; recursion is caller-owned.
      */
-    fun submit(onInvalid: () -> Unit = {}) {
+    fun submit(onInvalid: () -> Unit = {}, onSubmit: FormScope.() -> Unit) {
+        val snapshot = state.values.toMap()
+        val pending = state.registrations.values.mapNotNull { registration ->
+            registration.pending(snapshot, state.resetKey)
+        }
+        pending.forEach { it.apply(state) }
+
         fields.forEach { it.isDirty = true }
         state.shouldShowErrors = true
+
         if (state.isValid) onSubmit() else onInvalid()
     }
 
-    /** Clears all state in this form. */
+    /** Clears values, errors and visibility; mounted fields reinitialize on recomposition. */
     fun reset() = state.reset()
-}
-
-private class StateValidationScope(
-    private val scope: FormScope
-) : ValidationScope {
-    override val <T : Any> Field<T>.value: T
-        get() = with(scope) { value }
 }
 
 /**
  * Initializes [field] once and validates it when its value, validators, or declared
- * dependency values change. Use one ValidationEffect for each field in a form.
+ * dependency values change, or after reset. Use one ValidationEffect for each field in a form.
+ * Removing it clears its error and keeps its value and dirty flag. Registration updates commit
+ * with composition; submit before recomposition uses the previous validator list.
  */
 @Composable
 fun <T : Any> FormScope.ValidationEffect(
@@ -113,21 +119,29 @@ fun <T : Any> FormScope.ValidationEffect(
 ) {
     if (!field.isInitialized) state.values[field] = initialValue
 
-    DisposableEffect(field) {
-        onDispose { field.error = null }
+    val registration = remember(state, field) { ValidationRegistration(field) }
+    val value = field.value
+    val dependencyValues = dependencyValues(validators, state.values)
+
+    DisposableEffect(registration) {
+        onDispose {
+            if (state.registrations[field.name] === registration) {
+                state.registrations.remove(field.name)
+                field.error = null
+            }
+        }
     }
 
-    val value = field.value
-    val dependencyValues = validators
-        .flatMap(Validator<*>::dependencies)
-        .distinct()
-        .mapNotNull(state.values::get)
+    SideEffect {
+        registration.validators = validators.toList()
+        state.registrations[field.name] = registration
+    }
 
-    LaunchedEffect(value, validators, dependencyValues, state.resetKey) {
-        field.error = validators.firstOrNull { validator ->
-            validator.dependencies.all { it.isInitialized } &&
-                !with(validator) { validationScope.validate(value) }
-        }?.errorMessage
+    LaunchedEffect(registration, value, validators, dependencyValues, state.resetKey) {
+        // Submit may already have evaluated these inputs and then received a server rejection.
+        if (state.registrations[field.name] === registration) {
+            registration.pending(state.values.toMap(), state.resetKey)?.apply(state)
+        }
     }
 }
 

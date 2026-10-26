@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -24,18 +23,15 @@ import androidx.compose.runtime.setValue
  *
  * @param state The [FormState] instance backing this form. A different instance replaces the form
  * content subtree and disposes effects owned by the previous form.
- * @param onSubmit Called when [FormScope.submit] is triggered and the form is valid.
  * @param content The form body, scoped to [FormScope].
  */
 @Composable
 fun Form(
     state: FormState = remember { FormState() },
-    onSubmit: FormScope.() -> Unit,
     content: @Composable FormScope.() -> Unit
 ) {
-    val currentOnSubmit = rememberUpdatedState(onSubmit)
     val scope = remember(state) {
-        FormScope(state) { currentOnSubmit.value(this) }
+        FormScope(state)
     }
     key(state) {
         scope.content()
@@ -68,6 +64,9 @@ class FormState(shouldShowErrors: Boolean = false) {
      * different types, causing a type mismatch on value retrieval via [FormScope.value].
      */
     internal val values = mutableStateMapOf<Field<*>, Any>()
+
+    // Mounted effects own these registrations; they are deliberately not saved.
+    internal val registrations = mutableMapOf<String, ValidationRegistration<*>>()
 
     /**
      * Tracks all [Field]s that have been modified since form initialization or reset.
@@ -127,7 +126,8 @@ class FormState(shouldShowErrors: Boolean = false) {
      * reinitialize their associated [Field]s to their provided initial values and mark them
      * as pristine on the next recomposition.
      *
-     * This fully restores the form to its initial state.
+     * Reinitialization uses the initial inputs supplied by that recomposition, not a saved
+     * copy of the original inputs. A submit before then sees no initialized fields.
      */
     fun reset() {
         dirtyFields.clear()

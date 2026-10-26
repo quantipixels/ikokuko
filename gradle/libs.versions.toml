@@ -15,6 +15,10 @@ core = "1.7.0"
 vanniktechMavenPublish = "0.35.0"
 
 [libraries]
+verification-compose-test = { module = "androidx.compose.ui:ui-test-junit4", version = "1.9.3" }
+verification-compose-manifest = { module = "androidx.compose.ui:ui-test-manifest", version = "1.9.3" }
+verification-test-runner = { module = "androidx.test:runner", version = "1.7.0" }
+verification-test-core = { module = "androidx.test:core", version = "1.7.0" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 compose-runtime-saveable = { module = "org.jetbrains.compose.runtime:runtime-saveable", version.ref = "composeMultiplatform" }

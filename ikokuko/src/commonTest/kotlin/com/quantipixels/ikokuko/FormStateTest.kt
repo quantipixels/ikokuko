@@ -16,7 +16,7 @@ class FormStateTest {
     fun form_validity_follows_error_reporting_while_field_validity_is_strict() {
         val field = Field.Text("email")
         val state = FormState()
-        val scope = FormScope(state) {}
+        val scope = FormScope(state)
         state.values[field] = ""
 
         with(scope) {
@@ -41,7 +41,7 @@ class FormStateTest {
     fun value_setter_marks_only_initialized_value_changes_dirty() {
         val field = Field.Text("name")
         val state = FormState()
-        val scope = FormScope(state) {}
+        val scope = FormScope(state)
         state.values[field] = "initial"
 
         with(scope) {
@@ -63,7 +63,7 @@ class FormStateTest {
     fun reset_clears_values_errors_dirty_state_and_visibility() {
         val field = Field.Text("email")
         val state = FormState(shouldShowErrors = true)
-        val scope = FormScope(state) {}
+        val scope = FormScope(state)
         state.values[field] = "value"
 
         with(scope) {
@@ -86,12 +86,12 @@ class FormStateTest {
         val state = FormState()
         var submitted = false
         var invalid = false
-        val scope = FormScope(state) { submitted = true }
+        val scope = FormScope(state)
         state.values[field] = ""
 
         with(scope) {
             field.error = "required"
-            submit { invalid = true }
+            submit(onInvalid = { invalid = true }) { submitted = true }
 
             assertFalse(submitted)
             assertTrue(invalid)
@@ -99,7 +99,7 @@ class FormStateTest {
             assertTrue(field.shouldDisplayError)
 
             field.error = null
-            submit()
+            submit { submitted = true }
             assertTrue(submitted)
         }
     }
@@ -115,7 +115,7 @@ class FormStateTest {
         state.errors[name.name] = "invalid"
 
         val restored = FormState.Saver.roundTrip(state)
-        val scope = FormScope(restored) {}
+        val scope = FormScope(restored)
 
         with(scope) {
             assertEquals("Ada", name.value)
@@ -142,7 +142,7 @@ class FormStateTest {
         )
 
         val restored = FormState.saver(valuesSaver).roundTrip(state)
-        val scope = FormScope(restored) {}
+        val scope = FormScope(restored)
 
         with(scope) {
             assertEquals(Profile("Ada"), profile.value)

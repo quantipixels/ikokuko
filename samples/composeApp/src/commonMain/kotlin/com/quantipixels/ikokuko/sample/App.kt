@@ -56,8 +56,6 @@ fun App() {
             }
             Spacer(Modifier.height(24.dp))
             SignUpForm(onSubmit = { signUpData = it })
-            HorizontalDivider()
-            BackendErrorExample()
         }
 
         signUpData?.let { data ->
@@ -75,7 +73,10 @@ private fun SignUpSummaryDialog(
         onDismissRequest = onDismiss,
         title = { Text("Congratulations!") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("You’ve successfully completed the demo signup form.")
                 HorizontalDivider()
                 InfoLine("Phone number", data.phoneNumber)
@@ -84,6 +85,7 @@ private fun SignUpSummaryDialog(
                 InfoLine("Password confirmed?", if (data.password == data.confirmation) "Yes" else "No")
                 InfoLine("Capacity", data.capacity.name)
                 InfoLine("Projects", data.projects.joinToString(", ") { it.name })
+                if (data.notes.isNotBlank()) InfoLine("Notes", data.notes)
                 InfoLine("Terms accepted", if (data.terms) "Yes" else "No")
                 Spacer(Modifier.height(12.dp))
                 Text(

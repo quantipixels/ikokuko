@@ -238,34 +238,24 @@ Normally, this value is updated automatically by `ValidationEffect` whenever val
 - Custom inline validation not covered by existing Validator classes.
 - Resetting or clearing errors programmatically.
 
-#### Example: Manual error assignment
+#### Example: Server error assignment
 ```kotlin
-// Inside a FormScope
+// Inside a response handler or effect with access to FormScope
+EmailField.error = "This email is already registered"
+EmailField.isDirty = true
+isErrorReportingEnabled = true
 
-// Assign error message
-if (EmailField.value.endsWith("@test.com")) {
-    EmailField.error = "Test domains are not allowed"
-}
-
-// Clear the error message
+// Clear the error when appropriate
 EmailField.error = null
 ```
 
 ---
 
-### Backend rejections and multiline limits
+### Multiline input and limits
 
-The sample's `BackendErrorForm` uses the existing `TextInput` adapter and field APIs.
-The application owns a unique request ID, a submitted-values snapshot, the pending response,
-and its consumed request ID outside the form's lifetime. It applies a rejection only when the
-request is current and all submitted values still match. Known initialized fields receive
-`field.error` and `field.isDirty = true`; unknown names produce a form-level fallback.
-Every response is acknowledged, including stale responses, so recomposition or re-entry cannot
-reapply it. Retain that acknowledgment alongside your request state across navigation.
-The demo's rejection button supplies a local response; there is no network service.
-
-`TextInput` accepts `minLines`, `maxLines`, and caller-owned `counterText`. The sample uses
-`MaxLengthValidator` with a 240-unit notes limit and shows the counter alongside errors.
+The signup sample reuses `TextInput` for an optional notes field. The adapter accepts
+`minLines`, `maxLines`, and caller-owned `counterText`. The sample uses `MaxLengthValidator`
+with a 240-unit notes limit and shows the counter alongside errors.
 Both validation and the counter use Kotlin `String.length`: UTF-16 code units, not visible
 characters. An emoji may count as two units. Input, including pasted text and newlines, is kept
 intact; over-limit input is rejected by validation rather than silently truncated.

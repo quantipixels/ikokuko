@@ -11,7 +11,6 @@ All notable changes to Ikokuko are recorded in this file.
 - Give `onInvalid` the same `FormScope` receiver as `onSubmit` for reusable error handlers.
 - Default `ValidationEffect.validators` to an empty list, matching `FormField`.
 - Clarify reset and field lifetime while preserving the existing reactive validation behavior.
-- Add sample backend-rejection handling with stale-response checks and consumed-response acknowledgment.
 - Add multiline sample inputs with caller-owned counters and UTF-16 length validation, without truncation.
 
 ## [0.2.0] - 2026-08-02

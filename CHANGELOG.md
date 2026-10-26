@@ -8,9 +8,7 @@ All notable changes to Ikokuko are recorded in this file.
   error reporting and form validity; reactive validation runs regardless of its value.
 - Remove `onSubmit` from `Form` and require it at `submit(onInvalid = {}) { ... }`.
   Old submit trailing lambdas handled invalid input; migrate them to named `onInvalid`.
-- Flush pending validation synchronously on submit against one value snapshot. Preserve external
-  errors for unchanged inputs and propagate validator exceptions before applying submit changes.
-- Clarify reset, field lifetime, and validator registration timing.
+- Clarify reset and field lifetime while preserving the existing reactive validation behavior.
 - Add sample backend-rejection handling with stale-response checks and consumed-response acknowledgment.
 - Add multiline sample inputs with caller-owned counters and UTF-16 length validation, without truncation.
 

@@ -396,21 +396,15 @@ fun SignUpForm() {
 #### Notes
 - Uses the `TextInput` reusable component defined in the previous section.
 - `FormState` tracks and validates all registered fields automatically.
-- The success lambda passed to `submit` runs only when the form has no stored errors after pending validation.
+- The success lambda passed to `submit` runs only when the form has no stored errors after error reporting is enabled.
 - Cross-field validators declare the fields they read. A dependency value change revalidates the target field.
 - The form `isValid` property remains `true` until error reporting is enabled. After the first
   `submit()`, stored errors can disable UI elements such as this button.
-- `submit { ... }` flushes pending validation, including value and dependency edits made in the
-  same callback. It copies values once, computes all pending errors, then applies them before
-  marking initialized fields dirty and calling exactly one callback. An unchanged field retains
-  its manual/server error; changed validation inputs replace that error just as reactive validation does.
-- If a validator throws, the exception propagates. Submit applies no pending errors, dirty flags,
-  visibility changes or callbacks. Value edits made before submit remain yours.
-- Validators use the currently registered list. A list replaced before recomposition takes effect
-  after composition commits. Replace mutable field values with new values; in-place mutation is
-  unsupported and may be invisible to validation.
-- Callbacks run after validation commits and can reset or submit again. Your application owns
-  any recursion. A queued effect for already validated inputs preserves errors assigned by the callback.
+- `submit()` uses the latest completed reactive validation cycle. Do not assign a field value
+  and call `submit()` synchronously in the same callback.
+- External errors remain stored until a value, validator, dependency, or reset change triggers
+  reactive validation, or the application explicitly changes the error.
+
 ---
 
 ### 8. Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
@@ -507,8 +501,6 @@ Declare every field read during validation in `dependencies`.
 - **Old `submit { ... }` trailing lambdas meant `onInvalid`. They now mean successful submission.**
   Move old invalid handlers to the named `onInvalid` argument and add a success lambda.
 - Replace `onClick = ::submit` with `onClick = { submit { /* success */ } }`.
-- Same-callback edits now validate synchronously. Unchanged validation inputs still retain external
-  errors; changing a value, dependency, validators, or reset key replaces them on validation.
 
 ## Migrating from 0.1.0
 

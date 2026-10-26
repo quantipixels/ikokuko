@@ -66,9 +66,6 @@ class FormState(isErrorReportingEnabled: Boolean = false) {
      */
     internal val values = mutableStateMapOf<Field<*>, Any>()
 
-    // Mounted effects own these registrations; they are deliberately not saved.
-    internal val registrations = mutableMapOf<String, ValidationRegistration<*>>()
-
     /**
      * Tracks all [Field]s that have been modified since form initialization or reset.
      *

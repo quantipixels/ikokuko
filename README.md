@@ -51,17 +51,18 @@ For the released API, use the [0.2.0 documentation](https://github.com/quantipix
 It’s the single source of truth for the form’s current state.
 
 `FormState.isValid` follows the form's error-reporting state. It remains `true` while
-`shouldShowErrors` is `false`. After error reporting is enabled, it is `false` while any field has
+`isErrorReportingEnabled` is `false`. After error reporting is enabled, it is `false` while any field has
 a stored error. Individual `field.isValid` values remain strict regardless of error visibility.
 
-> Optionally pass `shouldShowErrors` when creating the state to control its initial error visibility behavior.
+> Set `isErrorReportingEnabled` to control when stored errors affect form validity and can appear
+> on dirty fields. Validation runs reactively regardless of this flag.
 
 ```kotlin
 // Default: dirty-field errors are hidden until submit or a manual toggle
 val formState = remember { FormState() }
 
 // Dirty-field errors can be displayed immediately
-val formState = remember { FormState(shouldShowErrors = true) }
+val formState = remember { FormState(isErrorReportingEnabled = true) }
 ```
 
 Use `rememberSaveableFormState()` when field values must survive supported platform state restoration:
@@ -76,9 +77,9 @@ complete `Saver<FormState, out Any>`. You can also use `FormState.saver(valuesSa
 saver for the complete `Map<String, Any>` of field names and values while Ikokuko saves the remaining
 form state.
 
-#### shouldShowErrors
-Controls whether stored errors can be displayed for dirty fields. A pristine field does not display
-its error until it becomes dirty. `submit()` marks all initialized fields as dirty.
+#### isErrorReportingEnabled
+Controls whether stored errors affect form validity and can be displayed for dirty fields.
+A pristine field does not display its error until it becomes dirty. `submit()` marks all initialized fields as dirty.
 
 |Value|Behaviour|Typical Use Case|
 |---|---|---|
@@ -88,14 +89,14 @@ its error until it becomes dirty. `submit()` marks all initialized fields as dir
 You can toggle this flag at any time from either the FormState or inside the FormScope.
 ```kotlin
 // From FormState
-formState.shouldShowErrors = true // Permit dirty-field errors
-formState.shouldShowErrors = false // Hide errors again
+formState.isErrorReportingEnabled = true // Permit dirty-field errors
+formState.isErrorReportingEnabled = false // Hide errors again
 
 // From FormScope
 Form {
     // ...
-    shouldShowErrors = true // Permit dirty-field errors
-    shouldShowErrors = false // Hide errors again
+    isErrorReportingEnabled = true // Permit dirty-field errors
+    isErrorReportingEnabled = false // Hide errors again
 }
 ```
 
@@ -498,6 +499,8 @@ Declare every field read during validation in `dependencies`.
 
 ## Migrating to the next release
 
+- Rename `shouldShowErrors` to `isErrorReportingEnabled` in state constructors,
+  `rememberSaveableFormState`, and property access. This controls error reporting, not validation execution.
 - Remove `onSubmit` from `Form`; it now accepts only `state` and `content`.
 - Supply success at the action: `submit { sendCurrentValues() }`, or
   `submit(onInvalid = { showSummary() }) { sendCurrentValues() }`.

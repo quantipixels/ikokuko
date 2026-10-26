@@ -52,7 +52,7 @@ class FormRecompositionTest {
                     assertFalse(field.isValid)
                     assertTrue(isValid)
 
-                    shouldShowErrors = true
+                    isErrorReportingEnabled = true
 
                     assertFalse(isValid)
                 }
@@ -88,7 +88,7 @@ class FormRecompositionTest {
             runOnIdle {
                 with(formScope) {
                     field.isDirty = true
-                    shouldShowErrors = true
+                    isErrorReportingEnabled = true
                     field.error = EXTERNAL_ERROR
 
                     assertEquals("", field.value)

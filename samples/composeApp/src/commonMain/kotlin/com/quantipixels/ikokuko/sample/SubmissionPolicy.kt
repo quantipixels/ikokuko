@@ -44,7 +44,7 @@ internal fun FormScope.applyRejection(decision: RejectionDecision) {
             field.isDirty = true
         }
     }
-    if (decision.fieldErrors.isNotEmpty()) shouldShowErrors = true
+    if (decision.fieldErrors.isNotEmpty()) isErrorReportingEnabled = true
 }
 
 internal const val NotesLimit = 240

@@ -30,7 +30,7 @@ class FormStateTest {
             field.isDirty = true
             assertFalse(field.shouldDisplayError)
 
-            shouldShowErrors = true
+            isErrorReportingEnabled = true
             assertTrue(field.shouldDisplayError)
             assertFalse(field.isValid)
             assertFalse(isValid)
@@ -62,7 +62,7 @@ class FormStateTest {
     @Test
     fun reset_clears_values_errors_dirty_state_and_visibility() {
         val field = Field.Text("email")
-        val state = FormState(shouldShowErrors = true)
+        val state = FormState(isErrorReportingEnabled = true)
         val scope = FormScope(state)
         state.values[field] = "value"
 
@@ -75,7 +75,7 @@ class FormStateTest {
             assertFalse(field in fields)
             assertFalse(field.isDirty)
             assertNull(field.error)
-            assertFalse(shouldShowErrors)
+            assertFalse(isErrorReportingEnabled)
             assertTrue(isValid)
         }
     }
@@ -108,7 +108,7 @@ class FormStateTest {
     fun default_saver_restores_values_dirty_errors_and_visibility() {
         val name = Field.Text("name")
         val age = Field<Int>("age")
-        val state = FormState(shouldShowErrors = true)
+        val state = FormState(isErrorReportingEnabled = true)
         state.values[name] = "Ada"
         state.values[age] = 37
         state.dirtyFields.add(name)
@@ -122,7 +122,7 @@ class FormStateTest {
             assertEquals(37, age.value)
             assertTrue(name.isDirty)
             assertEquals("invalid", name.error)
-            assertTrue(shouldShowErrors)
+            assertTrue(isErrorReportingEnabled)
             assertFalse(isValid)
         }
     }

@@ -66,17 +66,17 @@ class FormScope internal constructor(
 
     /** Returns `true` when the UI must display this field's stored error. */
     val Field<*>.shouldDisplayError: Boolean
-        get() = isDirty && state.shouldShowErrors && !isValid
+        get() = isDirty && state.isErrorReportingEnabled && !isValid
 
     /** Returns `true` when stored errors do not currently block the form. */
     val isValid: Boolean
         get() = state.isValid
 
     /** Controls whether stored errors affect form validity and can be shown for dirty fields. */
-    var shouldShowErrors: Boolean
-        get() = state.shouldShowErrors
+    var isErrorReportingEnabled: Boolean
+        get() = state.isErrorReportingEnabled
         set(value) {
-            state.shouldShowErrors = value
+            state.isErrorReportingEnabled = value
         }
 
     /**
@@ -96,7 +96,7 @@ class FormScope internal constructor(
         pending.forEach { it.apply(state) }
 
         fields.forEach { it.isDirty = true }
-        state.shouldShowErrors = true
+        state.isErrorReportingEnabled = true
 
         if (state.isValid) onSubmit() else onInvalid()
     }

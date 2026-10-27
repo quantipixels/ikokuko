@@ -36,13 +36,13 @@ repositories {
 }
 
 dependencies {
-    implementation("com.quantipixels:ikokuko:0.2.0")
+    implementation("com.quantipixels:ikokuko:0.3.0")
 }
 ```
 
-The examples below target the unreleased API. Version 0.2.0 uses different `Form` and `submit`
-signatures; see [Migrating to the next release](#migrating-to-the-next-release).
-For the released API, use the [0.2.0 documentation](https://github.com/quantipixels/ikokuko/blob/release-0.2.0/README.md).
+The examples below target version 0.3.0. Version 0.2.0 uses different `Form` and `submit`
+signatures; see [Migrating from 0.2.0](#migrating-from-020).
+For the older API, use the [0.2.0 documentation](https://github.com/quantipixels/ikokuko/blob/release-0.2.0/README.md).
 
 ---
 
@@ -482,7 +482,7 @@ Declare every field read during validation in `dependencies`.
 
 ---
 
-## Migrating to the next release
+## Migrating from 0.2.0
 
 - Rename `shouldShowErrors` to `isErrorReportingEnabled` in state constructors,
   `rememberSaveableFormState`, and property access. This controls error reporting, not validation execution.

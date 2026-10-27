@@ -4,6 +4,15 @@ All notable changes to Ikokuko are recorded in this file.
 
 ## [Unreleased]
 
+- Rename `shouldShowErrors` to `isErrorReportingEnabled` to clarify that the flag controls
+  error reporting and form validity; reactive validation runs regardless of its value.
+- Remove `onSubmit` from `Form` and require it at `submit(onInvalid = {}) { ... }`.
+  Old submit trailing lambdas handled invalid input; migrate them to named `onInvalid`.
+- Give `onInvalid` the same `FormScope` receiver as `onSubmit` for reusable error handlers.
+- Default `ValidationEffect.validators` to an empty list, matching `FormField`.
+- Clarify reset and field lifetime while preserving the existing reactive validation behavior.
+- Add multiline sample inputs with caller-owned counters and UTF-16 length validation, without truncation.
+
 ## [0.2.0] - 2026-08-02
 
 - Add strict field validation state and `Field.shouldDisplayError`.

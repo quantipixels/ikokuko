@@ -23,6 +23,7 @@ import com.quantipixels.ikokuko.Field
 import com.quantipixels.ikokuko.FieldEqualsValidator
 import com.quantipixels.ikokuko.Form
 import com.quantipixels.ikokuko.MatchPatternValidator
+import com.quantipixels.ikokuko.MaxLengthValidator
 import com.quantipixels.ikokuko.MinLengthValidator
 import com.quantipixels.ikokuko.RequiredValidator
 import com.quantipixels.ikokuko.SelectionRangeValidator
@@ -34,6 +35,7 @@ data class SignUpData(
     val confirmation: String,
     val capacity: Capacity,
     val projects: List<Project>,
+    val notes: String,
     val terms: Boolean
 )
 
@@ -43,8 +45,10 @@ private val PasswordField = Field.Text("password")
 private val ConfirmPasswordField = Field.Text("confirm_password")
 private val CapacityField = Field.Text("capacity")
 private val ProjectsField = Field.List<Project>("projects")
+private val NotesField = Field.Text("notes")
 private val TermsField = Field.Boolean("terms")
 
+private const val NotesLimit = 240
 private const val SymbolPattern = "[^A-Za-z0-9 ]"
 private const val DigitPattern = "\\d"
 private const val UppercasePattern = "[A-Z]"
@@ -65,22 +69,7 @@ fun SignUpForm(
     onSubmit: (SignUpData) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Form(
-        onSubmit = {
-            onSubmit(
-                SignUpData(
-                    PhoneNumberField.value,
-                    EmailField.value,
-                    PasswordField.value,
-                    ConfirmPasswordField.value,
-                    enumValueOf<Capacity>(CapacityField.value),
-                    ProjectsField.value,
-                    TermsField.value
-                )
-            )
-            reset()
-        }
-    ) {
+    Form {
         var passwordHidden by remember { mutableStateOf(true) }
         var confirmationHidden by remember { mutableStateOf(true) }
 
@@ -155,6 +144,16 @@ fun SignUpForm(
                     )
                 )
             )
+            TextInput(
+                field = NotesField,
+                label = "Notes (optional)",
+                minLines = 3,
+                maxLines = 6,
+                counterText = { "${it.length} / $NotesLimit UTF-16 units" },
+                validators = listOf(
+                    MaxLengthValidator("Use at most $NotesLimit UTF-16 units", NotesLimit)
+                )
+            )
             CheckBox(
                 field = TermsField,
                 label = "I agree to the Terms & Conditions",
@@ -169,7 +168,23 @@ fun SignUpForm(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = ::submit,
+                    onClick = {
+                        submit {
+                            onSubmit(
+                                SignUpData(
+                                    phoneNumber = PhoneNumberField.value,
+                                    email = EmailField.value,
+                                    password = PasswordField.value,
+                                    confirmation = ConfirmPasswordField.value,
+                                    capacity = enumValueOf<Capacity>(CapacityField.value),
+                                    projects = ProjectsField.value,
+                                    notes = NotesField.value,
+                                    terms = TermsField.value
+                                )
+                            )
+                            reset()
+                        }
+                    },
                     enabled = isValid,
                     modifier = Modifier.weight(1f)
                 ) {

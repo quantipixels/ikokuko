@@ -59,6 +59,9 @@ fun FormScope.TextInput(
     label: String = "",
     placeholder: String = "",
     isPassword: Boolean = false,
+    minLines: Int = 1,
+    maxLines: Int = 1,
+    counterText: ((String) -> String)? = null,
     validators: List<Validator<String>> = emptyList(),
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
@@ -74,13 +77,18 @@ fun FormScope.TextInput(
                         color = MaterialTheme.colorScheme.secondary.copy(alpha = .7f)
                     )
                 },
-                supportingText = if (field.shouldDisplayError) {
-                    field.error?.let { { Text(it) } }
-                } else {
-                    null
-                },
+                supportingText = if (field.shouldDisplayError || counterText != null) {
+                    {
+                        Column {
+                            if (field.shouldDisplayError) field.error?.let { Text(it) }
+                            counterText?.let { Text(it(field.value)) }
+                        }
+                    }
+                } else null,
                 onValueChange = { field.value = it },
-                singleLine = true,
+                singleLine = maxLines == 1,
+                minLines = minLines,
+                maxLines = maxLines,
                 visualTransformation = if (isPassword) {
                     PasswordVisualTransformation()
                 } else {

@@ -40,6 +40,10 @@ dependencies {
 }
 ```
 
+The examples below target the unreleased API. Version 0.2.0 uses different `Form` and `submit`
+signatures; see [Migrating to the next release](#migrating-to-the-next-release).
+For the released API, use the [0.2.0 documentation](https://github.com/quantipixels/ikokuko/blob/release-0.2.0/README.md).
+
 ---
 
 ### 2. [FormState](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Form.kt)
@@ -47,17 +51,18 @@ dependencies {
 It’s the single source of truth for the form’s current state.
 
 `FormState.isValid` follows the form's error-reporting state. It remains `true` while
-`shouldShowErrors` is `false`. After error reporting is enabled, it is `false` while any field has
+`isErrorReportingEnabled` is `false`. After error reporting is enabled, it is `false` while any field has
 a stored error. Individual `field.isValid` values remain strict regardless of error visibility.
 
-> Optionally pass `shouldShowErrors` when creating the state to control its initial error visibility behavior.
+> Set `isErrorReportingEnabled` to control when stored errors affect form validity and can appear
+> on dirty fields. Validation runs reactively regardless of this flag.
 
 ```kotlin
 // Default: dirty-field errors are hidden until submit or a manual toggle
 val formState = remember { FormState() }
 
 // Dirty-field errors can be displayed immediately
-val formState = remember { FormState(shouldShowErrors = true) }
+val formState = remember { FormState(isErrorReportingEnabled = true) }
 ```
 
 Use `rememberSaveableFormState()` when field values must survive supported platform state restoration:
@@ -72,9 +77,9 @@ complete `Saver<FormState, out Any>`. You can also use `FormState.saver(valuesSa
 saver for the complete `Map<String, Any>` of field names and values while Ikokuko saves the remaining
 form state.
 
-#### shouldShowErrors
-Controls whether stored errors can be displayed for dirty fields. A pristine field does not display
-its error until it becomes dirty. `submit()` marks all initialized fields as dirty.
+#### isErrorReportingEnabled
+Controls whether stored errors affect form validity and can be displayed for dirty fields.
+A pristine field does not display its error until it becomes dirty. `submit()` marks all initialized fields as dirty.
 
 |Value|Behaviour|Typical Use Case|
 |---|---|---|
@@ -84,25 +89,28 @@ its error until it becomes dirty. `submit()` marks all initialized fields as dir
 You can toggle this flag at any time from either the FormState or inside the FormScope.
 ```kotlin
 // From FormState
-formState.shouldShowErrors = true // Permit dirty-field errors
-formState.shouldShowErrors = false // Hide errors again
+formState.isErrorReportingEnabled = true // Permit dirty-field errors
+formState.isErrorReportingEnabled = false // Hide errors again
 
 // From FormScope
-Form(onSubmit = {}) {
+Form {
     // ...
-    shouldShowErrors = true // Permit dirty-field errors
-    shouldShowErrors = false // Hide errors again
+    isErrorReportingEnabled = true // Permit dirty-field errors
+    isErrorReportingEnabled = false // Hide errors again
 }
 ```
 
 #### Resetting the form
-The form can be reset from either the FormState or inside the FormScope.
+Reset clears values, errors, dirty flags, and error visibility. Mounted fields reinitialize on
+recomposition using the current `initialValue` inputs, which may differ from their original values.
+A submit before that recomposition sees no initialized fields. Unmounting a field clears its error
+but retains its value and dirty flag; a different `FormState` replaces the form subtree.
 ```kotlin
 // From FormState
 formState.reset()
 
 // From FormScope
-Form(onSubmit = {}) {
+Form {
     // ...
     Button(onClick = ::reset) { Text("Reset Form") }
 }
@@ -169,10 +177,11 @@ fun DemoForm() {
 You can connect fields to your FormState and enable validation in two ways:
 
 Use one `ValidationEffect` or `FormField` for each field in a form.
+Both default `validators` to an empty list, so fields without rules can omit that argument.
 
 - **Manual setup** — call [ValidationEffect](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/FormScope.kt) directly to register and validate a field.
 ```kotlin
-Form(onSubmit={ println("Email: ${EmailField.value}") }) {
+Form {
     ValidationEffect(
         field = EmailField,
         initialValue = "",
@@ -229,20 +238,27 @@ Normally, this value is updated automatically by `ValidationEffect` whenever val
 - Custom inline validation not covered by existing Validator classes.
 - Resetting or clearing errors programmatically.
 
-#### Example: Manual error assignment
+#### Example: Server error assignment
 ```kotlin
-// Inside a FormScope
+// Inside a response handler or effect with access to FormScope
+EmailField.error = "This email is already registered"
+EmailField.isDirty = true
+isErrorReportingEnabled = true
 
-// Assign error message
-if (EmailField.value.endsWith("@test.com")) {
-    EmailField.error = "Test domains are not allowed"
-}
-
-// Clear the error message
+// Clear the error when appropriate
 EmailField.error = null
 ```
 
 ---
+
+### Multiline input and limits
+
+The signup sample reuses `TextInput` for an optional notes field. The adapter accepts
+`minLines`, `maxLines`, and caller-owned `counterText`. The sample uses `MaxLengthValidator`
+with a 240-unit notes limit and shows the counter alongside errors.
+Both validation and the counter use Kotlin `String.length`: UTF-16 code units, not visible
+characters. An emoji may count as two units. Input, including pasted text and newlines, is kept
+intact; over-limit input is rejected by validation rather than silently truncated.
 
 ### 6. Creating Reusable Form Components
 
@@ -261,7 +277,10 @@ fun FormScope.TextInput(
     initialValue: String = "",
     label: String = "",
     placeholder: String = "",
-    validators: List<Validator<String>> = emptyList()
+    validators: List<Validator<String>> = emptyList(),
+    minLines: Int = 1,
+    maxLines: Int = 1,
+    counterText: ((String) -> String)? = null
 ) {
     FormField(field, initialValue, validators) {
         Column(modifier = modifier) {
@@ -275,9 +294,18 @@ fun FormScope.TextInput(
                         color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
                     )
                 },
-                supportingText = field.error.takeIf { field.shouldDisplayError }?.let { { Text(it) } },
+                supportingText = if (field.shouldDisplayError || counterText != null) {
+                    {
+                        Column {
+                            if (field.shouldDisplayError) field.error?.let { Text(it) }
+                            counterText?.let { Text(it(field.value)) }
+                        }
+                    }
+                } else null,
                 onValueChange = { field.value = it },
-                singleLine = true,
+                singleLine = maxLines == 1,
+                minLines = minLines,
+                maxLines = maxLines,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
@@ -314,11 +342,7 @@ val ConfirmPasswordField = Field.Text("confirm_password")
 fun SignUpForm() {
     val formState = remember { FormState() }
 
-    Form(state = formState, onSubmit = {
-        println("Email: ${EmailField.value}")
-        println("Password: ${PasswordField.value}")
-        println("Password Confirmation: ${ConfirmPasswordField.value}")
-    }) {
+    Form(state = formState) {
         Column {
             TextInput(
                 field = EmailField,
@@ -347,7 +371,12 @@ fun SignUpForm() {
                     FieldEqualsValidator("passwords must match", PasswordField)
                 )
             )
-            Button(onClick = ::submit, enabled = isValid) {
+            Button(onClick = {
+                submit(onInvalid = { println("Check the highlighted fields") }) {
+                    println("Email: ${EmailField.value}")
+                    // Send the current values to your application here.
+                }
+            }, enabled = isValid) {
                 Text("Sign In")
             }
         }
@@ -358,11 +387,15 @@ fun SignUpForm() {
 #### Notes
 - Uses the `TextInput` reusable component defined in the previous section.
 - `FormState` tracks and validates all registered fields automatically.
-- The `onSubmit` callback executes only when all validations pass.
+- The success lambda passed to `submit` runs only when the form has no stored errors after error reporting is enabled.
 - Cross-field validators declare the fields they read. A dependency value change revalidates the target field.
 - The form `isValid` property remains `true` until error reporting is enabled. After the first
   `submit()`, stored errors can disable UI elements such as this button.
-- `submit()` uses the latest completed reactive validation cycle. Do not assign a field value and call `submit()` synchronously in the same callback.
+- `submit()` uses the latest completed reactive validation cycle. Do not assign a field value
+  and call `submit()` synchronously in the same callback.
+- External errors remain stored until a value, validator, dependency, or reset change triggers
+  reactive validation, or the application explicitly changes the error.
+
 ---
 
 ### 8. Built-in [Validators](/ikokuko/src/commonMain/kotlin/com/quantipixels/ikokuko/Validator.kt)
@@ -449,6 +482,19 @@ Declare every field read during validation in `dependencies`.
 
 ---
 
+## Migrating to the next release
+
+- Rename `shouldShowErrors` to `isErrorReportingEnabled` in state constructors,
+  `rememberSaveableFormState`, and property access. This controls error reporting, not validation execution.
+- Remove `onSubmit` from `Form`; it now accepts only `state` and `content`.
+- Supply success at the action: `submit { sendCurrentValues() }`, or
+  `submit(onInvalid = { showSummary() }) { sendCurrentValues() }`.
+- Both callbacks have a `FormScope` receiver. Reusable handlers can read fields and errors directly;
+  wrap existing zero-argument handler variables as `onInvalid = { handler() }`.
+- **Old `submit { ... }` trailing lambdas meant `onInvalid`. They now mean successful submission.**
+  Move old invalid handlers to the named `onInvalid` argument and add a success lambda.
+- Replace `onClick = ::submit` with `onClick = { submit { /* success */ } }`.
+
 ## Migrating from 0.1.0
 
 - Change nullable field types to non-null types. `Field<T>` now requires `T : Any`.
@@ -457,8 +503,7 @@ Declare every field read during validation in `dependencies`.
 - Give each field a unique name within its `FormScope`. Same-name fields share one stored value.
 - Rename the `default` argument of `ValidationEffect` and `FormField` to `initialValue`.
 - Replace `field.markAsDirty()` with `field.isDirty = true`. The `isDirty` property is now writable.
-- Remove explicit `null` arguments from `submit(onInvalid)`. Its fallback is now a non-null no-op
-  callback.
+- Remove explicit `null` arguments from `onInvalid`; its default is a non-null no-op callback.
 - Use `field.shouldDisplayError` for rendering. `field.error` and `field.isValid` expose strict
   stored field state. `FormState.isValid` ignores stored errors until error reporting is enabled.
 - Update custom validators to implement `fun ValidationScope.validate(value: T)`. Declare each
@@ -479,7 +524,8 @@ Declare every field read during validation in `dependencies`.
 - Use `CheckedValidator` for required Boolean fields. Use `InValidator`, `NotInValidator`, and
   `SelectionInValidator` for membership rules.
 - Account for reset behavior. `reset()` now clears values, errors, dirty state, and error visibility,
-  then revalidates initialized effects.
+  then reinitializes mounted effects on recomposition using their current initial inputs.
+  A submit before that recomposition sees no initialized fields.
 
 ---
 

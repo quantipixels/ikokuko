@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -24,18 +23,15 @@ import androidx.compose.runtime.setValue
  *
  * @param state The [FormState] instance backing this form. A different instance replaces the form
  * content subtree and disposes effects owned by the previous form.
- * @param onSubmit Called when [FormScope.submit] is triggered and the form is valid.
  * @param content The form body, scoped to [FormScope].
  */
 @Composable
 fun Form(
     state: FormState = remember { FormState() },
-    onSubmit: FormScope.() -> Unit,
     content: @Composable FormScope.() -> Unit
 ) {
-    val currentOnSubmit = rememberUpdatedState(onSubmit)
     val scope = remember(state) {
-        FormScope(state) { currentOnSubmit.value(this) }
+        FormScope(state)
     }
     key(state) {
         scope.content()
@@ -48,10 +44,11 @@ fun Form(
  * Acts as the single source of truth for all form data and validation state.
  * Can be remembered in a composable or hoisted to persist across navigation.
  *
- * @param shouldShowErrors Whether stored errors should affect form validity and be visible initially.
+ * @param isErrorReportingEnabled Whether stored errors initially affect form validity and can be shown
+ * for dirty fields.
  */
 @Stable
-class FormState(shouldShowErrors: Boolean = false) {
+class FormState(isErrorReportingEnabled: Boolean = false) {
     /**
      * Holds the current values for all registered [Field]s in the form.
      *
@@ -102,7 +99,7 @@ class FormState(shouldShowErrors: Boolean = false) {
      * Controls whether stored errors affect form validity and can be shown for dirty fields.
      * Validation still runs reactively regardless of this flag.
      */
-    var shouldShowErrors by mutableStateOf(shouldShowErrors)
+    var isErrorReportingEnabled by mutableStateOf(isErrorReportingEnabled)
 
     /**
      * Indicates whether any [Field] in the form has been modified
@@ -118,7 +115,7 @@ class FormState(shouldShowErrors: Boolean = false) {
      * returns `true` only when the form has no stored validation or external errors.
      */
     val isValid: Boolean
-        get() = !shouldShowErrors || errors.isEmpty()
+        get() = !isErrorReportingEnabled || errors.isEmpty()
 
     /**
      * Clears all field values, errors, dirty state, and error visibility.
@@ -127,13 +124,14 @@ class FormState(shouldShowErrors: Boolean = false) {
      * reinitialize their associated [Field]s to their provided initial values and mark them
      * as pristine on the next recomposition.
      *
-     * This fully restores the form to its initial state.
+     * Reinitialization uses the initial inputs supplied by that recomposition, not a saved
+     * copy of the original inputs. A submit before then sees no initialized fields.
      */
     fun reset() {
         dirtyFields.clear()
         values.clear()
         errors.clear()
-        shouldShowErrors = false
+        isErrorReportingEnabled = false
         resetKey++
     }
 
@@ -179,7 +177,7 @@ private fun <Saveable : Any> formStateSaver(
 
         buildList {
             add(savedValues)
-            add(state.shouldShowErrors)
+            add(state.isErrorReportingEnabled)
             add(state.dirtyFields.size)
             state.dirtyFields.forEach { add(it.name) }
             add(state.errors.size)
@@ -194,7 +192,7 @@ private fun <Saveable : Any> formStateSaver(
         @Suppress("UNCHECKED_CAST")
         val restoredValues = valuesSaver.restore(saved[index++] as Saveable)
             ?: return@listSaver null
-        val state = FormState(shouldShowErrors = saved[index++] as Boolean)
+        val state = FormState(isErrorReportingEnabled = saved[index++] as Boolean)
 
         restoredValues.forEach { (name, value) ->
             state.values[Field<Any>(name)] = value
@@ -221,8 +219,8 @@ private fun <Saveable : Any> formStateSaver(
  */
 @Composable
 fun rememberSaveableFormState(
-    shouldShowErrors: Boolean = false,
+    isErrorReportingEnabled: Boolean = false,
     saver: Saver<FormState, out Any> = FormState.Saver
 ): FormState = rememberSaveable(saver = saver) {
-    FormState(shouldShowErrors)
+    FormState(isErrorReportingEnabled)
 }

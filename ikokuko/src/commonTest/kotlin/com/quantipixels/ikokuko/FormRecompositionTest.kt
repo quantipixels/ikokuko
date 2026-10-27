@@ -35,7 +35,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     ValidationEffect(
                         field = field,
                         initialValue = "",
@@ -52,7 +52,7 @@ class FormRecompositionTest {
                     assertFalse(field.isValid)
                     assertTrue(isValid)
 
-                    shouldShowErrors = true
+                    isErrorReportingEnabled = true
 
                     assertFalse(isValid)
                 }
@@ -68,7 +68,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     val currentRecomposition = recompositionTrigger
 
                     ValidationEffect(
@@ -88,7 +88,7 @@ class FormRecompositionTest {
             runOnIdle {
                 with(formScope) {
                     field.isDirty = true
-                    shouldShowErrors = true
+                    isErrorReportingEnabled = true
                     field.error = EXTERNAL_ERROR
 
                     assertEquals("", field.value)
@@ -118,7 +118,7 @@ class FormRecompositionTest {
             lateinit var currentScope: FormScope
 
             setContent {
-                Form(state = currentState, onSubmit = {}) {
+                Form(state = currentState) {
                     ValidationEffect(
                         field = field,
                         initialValue = "",
@@ -152,7 +152,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(password, initialValue = "same", validators = emptyList())
                 ValidationEffect(
                     confirmation,
@@ -187,7 +187,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(
                     confirmation,
                     initialValue = "confirmation",
@@ -236,7 +236,7 @@ class FormRecompositionTest {
             }
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     ValidationEffect(
                         combined,
                         initialValue = "AB",
@@ -303,8 +303,8 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(state = state, onSubmit = {}) {
-                    ValidationEffect(field, initialValue = initialValue, validators = emptyList())
+                Form(state = state) {
+                    ValidationEffect(field, initialValue = initialValue)
                     SideEffect { formScope = this }
                 }
             }
@@ -343,7 +343,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(
                     field,
                     initialValue = "",
@@ -377,7 +377,7 @@ class FormRecompositionTest {
         lateinit var formScope: FormScope
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(
                     field,
                     initialValue = "",
@@ -411,7 +411,7 @@ class FormRecompositionTest {
             lateinit var formScope: FormScope
 
             setContent {
-                Form(onSubmit = {}) {
+                Form {
                     if (showField) {
                         ValidationEffect(
                             field,
@@ -472,7 +472,7 @@ class FormRecompositionTest {
         }
 
         setContent {
-            Form(onSubmit = {}) {
+            Form {
                 ValidationEffect(field, initialValue = "value", validators = listOf(validator))
             }
         }

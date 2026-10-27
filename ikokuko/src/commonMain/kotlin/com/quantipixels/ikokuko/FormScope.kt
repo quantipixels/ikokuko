@@ -9,8 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
  */
 @Suppress("UNCHECKED_CAST")
 class FormScope internal constructor(
-    internal val state: FormState,
-    private val onSubmit: FormScope.() -> Unit
+    internal val state: FormState
 ) {
     internal val validationScope: ValidationScope = StateValidationScope(this)
 
@@ -67,30 +66,36 @@ class FormScope internal constructor(
 
     /** Returns `true` when the UI must display this field's stored error. */
     val Field<*>.shouldDisplayError: Boolean
-        get() = isDirty && state.shouldShowErrors && !isValid
+        get() = isDirty && state.isErrorReportingEnabled && !isValid
 
     /** Returns `true` when stored errors do not currently block the form. */
     val isValid: Boolean
         get() = state.isValid
 
     /** Controls whether stored errors affect form validity and can be shown for dirty fields. */
-    var shouldShowErrors: Boolean
-        get() = state.shouldShowErrors
+    var isErrorReportingEnabled: Boolean
+        get() = state.isErrorReportingEnabled
         set(value) {
-            state.shouldShowErrors = value
+            state.isErrorReportingEnabled = value
         }
 
     /**
-     * Marks all initialized fields as dirty and enables error display.
-     * Calls the form submit callback only when the form is valid.
+     * Enables error reporting and marks initialized fields dirty before checking stored errors.
+     * Validation runs reactively; this action uses its latest completed result. Do not change a
+     * field value and submit in the same callback, before reactive validation has processed it.
+     * Calls [onSubmit] when no stored errors remain, otherwise [onInvalid].
+     * Both callbacks receive this form's scope so reusable handlers can inspect fields and errors.
      */
-    fun submit(onInvalid: () -> Unit = {}) {
+    fun submit(
+        onInvalid: FormScope.() -> Unit = {},
+        onSubmit: FormScope.() -> Unit
+    ) {
         fields.forEach { it.isDirty = true }
-        state.shouldShowErrors = true
+        state.isErrorReportingEnabled = true
         if (state.isValid) onSubmit() else onInvalid()
     }
 
-    /** Clears all state in this form. */
+    /** Clears values, errors and visibility; mounted fields reinitialize on recomposition. */
     fun reset() = state.reset()
 }
 
@@ -109,7 +114,7 @@ private class StateValidationScope(
 fun <T : Any> FormScope.ValidationEffect(
     field: Field<T>,
     initialValue: T,
-    validators: List<Validator<T>>
+    validators: List<Validator<T>> = emptyList()
 ) {
     if (!field.isInitialized) state.values[field] = initialValue
 

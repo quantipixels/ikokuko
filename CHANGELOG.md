@@ -4,6 +4,8 @@ All notable changes to Ikokuko are recorded in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-27
+
 - Rename `shouldShowErrors` to `isErrorReportingEnabled` to clarify that the flag controls
   error reporting and form validity; reactive validation runs regardless of its value.
 - Remove `onSubmit` from `Form` and require it at `submit(onInvalid = {}) { ... }`.
@@ -43,6 +45,7 @@ All notable changes to Ikokuko are recorded in this file.
 - Add the Compose Multiplatform sample application.
 - Publish the library to Maven Central.
 
-[Unreleased]: https://github.com/quantipixels/ikokuko/compare/release-0.2.0...HEAD
+[Unreleased]: https://github.com/quantipixels/ikokuko/compare/release-0.3.0...HEAD
+[0.3.0]: https://github.com/quantipixels/ikokuko/releases/tag/release-0.3.0
 [0.2.0]: https://github.com/quantipixels/ikokuko/releases/tag/release-0.2.0
 [0.1.0]: https://github.com/quantipixels/ikokuko/releases/tag/release-0.1.0
